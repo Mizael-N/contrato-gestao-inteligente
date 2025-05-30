@@ -13,6 +13,12 @@ interface GuaranteeInfoFormProps {
 }
 
 export default function GuaranteeInfoForm({ formData, onChange }: GuaranteeInfoFormProps) {
+  const guaranteeTypeOptions = [
+    { value: 'caucao', label: 'Caução' },
+    { value: 'seguro_garantia', label: 'Seguro Garantia' },
+    { value: 'fianca_bancaria', label: 'Fiança Bancária' },
+  ];
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       <div>
@@ -22,9 +28,11 @@ export default function GuaranteeInfoForm({ formData, onChange }: GuaranteeInfoF
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="caucao">Caução</SelectItem>
-            <SelectItem value="seguro_garantia">Seguro Garantia</SelectItem>
-            <SelectItem value="fianca_bancaria">Fiança Bancária</SelectItem>
+            {guaranteeTypeOptions.map(option => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
