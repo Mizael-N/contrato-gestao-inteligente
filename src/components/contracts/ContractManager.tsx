@@ -1,9 +1,11 @@
-
 import { useState } from 'react';
-import { Contract } from '@/types/contract';
+import { Contract, Aditivo } from '@/types/contract';
 import ContractList from './ContractList';
 import ContractForm from './ContractForm';
 import ContractDetails from './ContractDetails';
+import AddendumForm from './AddendumForm';
+import ContractImport from './ContractImport';
+import ContractAlerts from './ContractAlerts';
 import { useToast } from '@/hooks/use-toast';
 
 // Dados mockados para demonstração
@@ -62,7 +64,7 @@ const mockContracts: Contract[] = [
 
 export default function ContractManager() {
   const [contracts, setContracts] = useState<Contract[]>(mockContracts);
-  const [currentView, setCurrentView] = useState<'list' | 'form' | 'details'>('list');
+  const [currentView, setCurrentView] = useState<'list' | 'form' | 'details' | 'addendum' | 'import'>('list');
   const [selectedContract, setSelectedContract] = useState<Contract | undefined>();
   const { toast } = useToast();
 
@@ -87,6 +89,65 @@ export default function ContractManager() {
       title: 'Contrato excluído',
       description: 'O contrato foi excluído com sucesso.',
     });
+  };
+
+  const handleCreateAddendum = (contract: Contract) => {
+    setSelectedContract(contract);
+    setCurrentView('addendum');
+  };
+
+  const handleAddendumSubmit = (addendumData: Omit<Aditivo, 'id'>) => {
+    if (selectedContract) {
+      const newAddendum: Aditivo = {
+        id: Date.now().toString(),
+        ...addendumData
+      };
+
+      const updatedContract = {
+        ...selectedContract,
+        aditivos: [...selectedContract.aditivos, newAddendum],
+        // Atualiza valores do contrato se for aditivo de prazo ou valor
+        ...(addendumData.tipo === 'prazo' && addendumData.prazoNovo ? 
+          { prazoExecucao: addendumData.prazoNovo } : {}),
+        ...(addendumData.tipo === 'valor' && addendumData.valorNovo ? 
+          { valor: addendumData.valorNovo } : {}),
+      };
+
+      setContracts(contracts.map(c => 
+        c.id === selectedContract.id ? updatedContract : c
+      ));
+
+      toast({
+        title: 'Termo aditivo criado',
+        description: 'O termo aditivo foi adicionado ao contrato com sucesso.',
+      });
+      
+      setCurrentView('details');
+      setSelectedContract(updatedContract);
+    }
+  };
+
+  const handleImport = () => {
+    setCurrentView('import');
+  };
+
+  const handleImportSubmit = (importedContracts: Partial<Contract>[]) => {
+    const newContracts: Contract[] = importedContracts.map(contractData => ({
+      id: Date.now().toString() + Math.random(),
+      aditivos: [],
+      pagamentos: [],
+      documentos: [],
+      ...contractData
+    } as Contract));
+
+    setContracts([...contracts, ...newContracts]);
+    
+    toast({
+      title: 'Contratos importados',
+      description: `${newContracts.length} contratos foram importados com sucesso.`,
+    });
+    
+    setCurrentView('list');
   };
 
   const handleSubmit = (contractData: Partial<Contract>) => {
@@ -144,13 +205,39 @@ export default function ContractManager() {
     );
   }
 
+  if (currentView === 'addendum' && selectedContract) {
+    return (
+      <AddendumForm
+        contract={selectedContract}
+        onSubmit={handleAddendumSubmit}
+        onCancel={handleCancel}
+      />
+    );
+  }
+
+  if (currentView === 'import') {
+    return (
+      <ContractImport
+        onImport={handleImportSubmit}
+        onCancel={handleCancel}
+      />
+    );
+  }
+
   return (
-    <ContractList
-      contracts={contracts}
-      onEdit={handleEdit}
-      onDelete={handleDelete}
-      onView={handleView}
-      onNew={handleNew}
-    />
+    <div>
+      <ContractAlerts 
+        contracts={contracts}
+        onCreateAddendum={handleCreateAddendum}
+      />
+      <ContractList
+        contracts={contracts}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        onView={handleView}
+        onNew={handleNew}
+        onImport={handleImport}
+      />
+    </div>
   );
 }
