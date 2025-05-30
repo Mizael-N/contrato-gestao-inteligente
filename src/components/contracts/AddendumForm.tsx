@@ -49,11 +49,16 @@ export default function AddendumForm({ contract, onSubmit, onCancel }: AddendumF
     onSubmit(addendum);
   };
 
-  const getAdditiveTypeOptions = () => [
-    { value: 'prazo', label: 'Prorrogação de Prazo' },
-    { value: 'valor', label: 'Acréscimo/Supressão de Valor' },
-    { value: 'qualitativo', label: 'Alteração Qualitativa' },
-  ];
+  const getAdditiveTypeOptions = () => {
+    const options = [
+      { value: 'prazo', label: 'Prorrogação de Prazo' },
+      { value: 'valor', label: 'Acréscimo/Supressão de Valor' },
+      { value: 'qualitativo', label: 'Alteração Qualitativa' },
+    ];
+    
+    console.log('Additive type options:', options);
+    return options;
+  };
 
   return (
     <Card className="max-w-4xl mx-auto">
@@ -77,14 +82,21 @@ export default function AddendumForm({ contract, onSubmit, onCancel }: AddendumF
               <Label htmlFor="tipo">Tipo do Termo Aditivo</Label>
               <Select value={formData.tipo} onValueChange={(value) => setFormData({ ...formData, tipo: value as any })}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Selecione o tipo" />
                 </SelectTrigger>
                 <SelectContent>
-                  {getAdditiveTypeOptions().map(option => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
+                  {getAdditiveTypeOptions().map(option => {
+                    console.log('Rendering SelectItem with value:', option.value);
+                    if (!option.value || option.value.trim() === '') {
+                      console.error('Empty value detected for option:', option);
+                      return null;
+                    }
+                    return (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>

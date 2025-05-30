@@ -21,6 +21,10 @@ export default function GuaranteeInfoForm({ formData, onChange }: GuaranteeInfoF
 
   // Ensure we have a valid value for the Select
   const selectValue = formData.garantiaTipo || 'caucao';
+  
+  console.log('GuaranteeInfoForm - formData.garantiaTipo:', formData.garantiaTipo);
+  console.log('GuaranteeInfoForm - selectValue:', selectValue);
+  console.log('GuaranteeInfoForm - guaranteeTypeOptions:', guaranteeTypeOptions);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -31,11 +35,18 @@ export default function GuaranteeInfoForm({ formData, onChange }: GuaranteeInfoF
             <SelectValue placeholder="Selecione o tipo de garantia" />
           </SelectTrigger>
           <SelectContent>
-            {guaranteeTypeOptions.map(option => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
+            {guaranteeTypeOptions.map(option => {
+              console.log('Rendering guarantee SelectItem with value:', option.value);
+              if (!option.value || option.value.trim() === '') {
+                console.error('Empty value detected for guarantee option:', option);
+                return null;
+              }
+              return (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              );
+            })}
           </SelectContent>
         </Select>
       </div>
