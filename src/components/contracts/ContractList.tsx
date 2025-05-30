@@ -52,7 +52,7 @@ export default function ContractList({ contracts, onEdit, onDelete, onView, onNe
       if (filters.status && contract.status !== filters.status) {
         return false;
       }
-      if (filters.dataInicio && contract.dataFim) {
+      if (filters.dataInicio && filters.dataFim) {
         const startDate = new Date(filters.dataInicio);
         const endDate = new Date(filters.dataFim);
         const contractDate = new Date(contract.dataAssinatura);
