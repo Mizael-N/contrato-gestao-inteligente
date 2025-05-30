@@ -19,13 +19,16 @@ export default function GuaranteeInfoForm({ formData, onChange }: GuaranteeInfoF
     { value: 'fianca_bancaria', label: 'Fiança Bancária' },
   ];
 
+  // Ensure we have a valid value for the Select
+  const selectValue = formData.garantiaTipo || 'caucao';
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       <div>
         <Label htmlFor="garantiaTipo">Tipo de Garantia</Label>
-        <Select value={formData.garantiaTipo} onValueChange={(value) => onChange('garantiaTipo', value)}>
+        <Select value={selectValue} onValueChange={(value) => onChange('garantiaTipo', value)}>
           <SelectTrigger>
-            <SelectValue />
+            <SelectValue placeholder="Selecione o tipo de garantia" />
           </SelectTrigger>
           <SelectContent>
             {guaranteeTypeOptions.map(option => (
