@@ -14,17 +14,18 @@ interface GuaranteeInfoFormProps {
 
 export default function GuaranteeInfoForm({ formData, onChange }: GuaranteeInfoFormProps) {
   const guaranteeTypeOptions = [
+    { value: 'sem_garantia', label: 'Sem garantia' },
     { value: 'caucao', label: 'Caução' },
     { value: 'seguro_garantia', label: 'Seguro Garantia' },
     { value: 'fianca_bancaria', label: 'Fiança Bancária' },
   ];
 
-  // Ensure we have a valid value for the Select
-  const selectValue = formData.garantiaTipo || 'caucao';
+  const selectValue = formData.garantiaTipo || 'sem_garantia';
+  const isWithoutGuarantee = selectValue === 'sem_garantia';
   
   console.log('GuaranteeInfoForm - formData.garantiaTipo:', formData.garantiaTipo);
   console.log('GuaranteeInfoForm - selectValue:', selectValue);
-  console.log('GuaranteeInfoForm - guaranteeTypeOptions:', guaranteeTypeOptions);
+  console.log('GuaranteeInfoForm - isWithoutGuarantee:', isWithoutGuarantee);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -37,10 +38,6 @@ export default function GuaranteeInfoForm({ formData, onChange }: GuaranteeInfoF
           <SelectContent>
             {guaranteeTypeOptions.map(option => {
               console.log('Rendering guarantee SelectItem with value:', option.value);
-              if (!option.value || option.value.trim() === '') {
-                console.error('Empty value detected for guarantee option:', option);
-                return null;
-              }
               return (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
@@ -56,8 +53,11 @@ export default function GuaranteeInfoForm({ formData, onChange }: GuaranteeInfoF
           id="garantiaValor"
           type="number"
           step="0.01"
+          min="0"
           value={formData.garantiaValor}
-          onChange={(e) => onChange('garantiaValor', parseFloat(e.target.value))}
+          onChange={(e) => onChange('garantiaValor', parseFloat(e.target.value) || 0)}
+          disabled={isWithoutGuarantee}
+          placeholder={isWithoutGuarantee ? "Sem garantia" : "0,00"}
         />
       </div>
       <div>
@@ -67,6 +67,8 @@ export default function GuaranteeInfoForm({ formData, onChange }: GuaranteeInfoF
           type="date"
           value={formData.garantiaVencimento}
           onChange={(e) => onChange('garantiaVencimento', e.target.value)}
+          disabled={isWithoutGuarantee}
+          placeholder={isWithoutGuarantee ? "Sem vencimento" : ""}
         />
       </div>
     </div>

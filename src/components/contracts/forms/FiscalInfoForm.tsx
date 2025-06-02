@@ -14,21 +14,21 @@ export default function FiscalInfoForm({ formData, onChange }: FiscalInfoFormPro
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div>
-        <Label htmlFor="fiscalTitular">Fiscal Titular</Label>
+        <Label htmlFor="fiscalTitular">Fiscal Titular (opcional)</Label>
         <Input
           id="fiscalTitular"
           value={formData.fiscalTitular}
           onChange={(e) => onChange('fiscalTitular', e.target.value)}
-          required
+          placeholder="Nome do fiscal titular"
         />
       </div>
       <div>
-        <Label htmlFor="fiscalSubstituto">Fiscal Substituto</Label>
+        <Label htmlFor="fiscalSubstituto">Fiscal Substituto (opcional)</Label>
         <Input
           id="fiscalSubstituto"
           value={formData.fiscalSubstituto}
           onChange={(e) => onChange('fiscalSubstituto', e.target.value)}
-          required
+          placeholder="Nome do fiscal substituto"
         />
       </div>
     </div>

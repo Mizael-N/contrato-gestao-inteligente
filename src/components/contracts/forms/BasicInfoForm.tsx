@@ -13,6 +13,7 @@ interface BasicInfoFormProps {
     valor: number;
     dataAssinatura: string;
     prazoExecucao: number;
+    prazoUnidade: string;
     modalidade: string;
     observacoes: string;
   };
@@ -81,7 +82,7 @@ export default function BasicInfoForm({ formData, onChange }: BasicInfoFormProps
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div>
           <Label htmlFor="valor">Valor (R$)</Label>
           <Input
@@ -104,14 +105,28 @@ export default function BasicInfoForm({ formData, onChange }: BasicInfoFormProps
           />
         </div>
         <div>
-          <Label htmlFor="prazoExecucao">Prazo de Execução (dias)</Label>
+          <Label htmlFor="prazoExecucao">Prazo de Execução</Label>
           <Input
             id="prazoExecucao"
             type="number"
+            min="1"
             value={formData.prazoExecucao}
             onChange={(e) => onChange('prazoExecucao', parseInt(e.target.value))}
             required
           />
+        </div>
+        <div>
+          <Label htmlFor="prazoUnidade">Unidade</Label>
+          <Select value={formData.prazoUnidade || 'dias'} onValueChange={(value) => onChange('prazoUnidade', value)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="dias">Dias</SelectItem>
+              <SelectItem value="meses">Meses</SelectItem>
+              <SelectItem value="anos">Anos</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 

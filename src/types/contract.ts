@@ -1,4 +1,3 @@
-
 export interface Contract {
   id: string;
   numero: string;
@@ -7,11 +6,12 @@ export interface Contract {
   contratada: string;
   valor: number;
   dataAssinatura: string;
-  prazoExecucao: number; // em dias
+  prazoExecucao: number; // valor numérico
+  prazoUnidade?: string; // 'dias' | 'meses' | 'anos'
   modalidade: 'pregao' | 'concorrencia' | 'tomada_precos' | 'convite' | 'concurso' | 'leilao';
   status: 'vigente' | 'suspenso' | 'encerrado' | 'rescindido';
   garantia: {
-    tipo: 'caucao' | 'seguro_garantia' | 'fianca_bancaria';
+    tipo: 'sem_garantia' | 'caucao' | 'seguro_garantia' | 'fianca_bancaria';
     valor: number;
     dataVencimento: string;
   };
