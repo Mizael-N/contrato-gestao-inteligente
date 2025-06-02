@@ -1,3 +1,4 @@
+
 export interface Contract {
   id: string;
   numero: string;
@@ -23,12 +24,16 @@ export interface Contract {
   pagamentos: Pagamento[];
   observacoes: string;
   documentos: Documento[];
+  // Campos opcionais para aditivos durante edição
+  tipoAditivo?: string;
+  dataAditivo?: string;
+  justificativaAditivo?: string;
 }
 
 export interface Aditivo {
   id: string;
   numero: string;
-  tipo: 'prazo' | 'valor' | 'qualitativo';
+  tipo: 'prazo' | 'valor' | 'qualitativo' | 'reequilibrio' | 'localizacao' | 'responsabilidade';
   justificativa: string;
   valorAnterior?: number;
   valorNovo?: number;

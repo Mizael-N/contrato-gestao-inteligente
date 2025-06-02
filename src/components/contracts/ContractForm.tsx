@@ -6,6 +6,7 @@ import { Contract } from '@/types/contract';
 import BasicInfoForm from './forms/BasicInfoForm';
 import FiscalInfoForm from './forms/FiscalInfoForm';
 import GuaranteeInfoForm from './forms/GuaranteeInfoForm';
+import AddendumInfoForm from './forms/AddendumInfoForm';
 
 interface ContractFormProps {
   contract?: Contract;
@@ -31,6 +32,10 @@ export default function ContractForm({ contract, onSubmit, onCancel }: ContractF
     garantiaTipo: contract?.garantia?.tipo || 'sem_garantia',
     garantiaValor: contract?.garantia?.valor || 0,
     garantiaVencimento: contract?.garantia?.dataVencimento || '',
+    // Campos de aditivo para edição
+    tipoAditivo: '',
+    dataAditivo: '',
+    justificativaAditivo: '',
   });
 
   const handleFieldChange = (field: string, value: any) => {
@@ -77,6 +82,13 @@ export default function ContractForm({ contract, onSubmit, onCancel }: ContractF
             formData={formData} 
             onChange={handleFieldChange} 
           />
+
+          {contract && (
+            <AddendumInfoForm
+              formData={formData}
+              onChange={handleFieldChange}
+            />
+          )}
 
           <div className="flex justify-end space-x-2">
             <Button type="button" variant="outline" onClick={onCancel}>

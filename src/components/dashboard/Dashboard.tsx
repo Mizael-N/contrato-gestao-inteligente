@@ -3,44 +3,105 @@ import { FileText, DollarSign, Clock, AlertTriangle } from 'lucide-react';
 import StatCard from './StatCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { Contract } from '@/types/contract';
 
-export default function Dashboard() {
+interface DashboardProps {
+  contracts?: Contract[];
+}
+
+export default function Dashboard({ contracts = [] }: DashboardProps) {
+  // Calcular estatísticas baseadas nos contratos reais
+  const activeContracts = contracts.filter(c => c.status === 'vigente').length;
+  const totalValue = contracts.reduce((sum, c) => sum + (c.valor || 0), 0);
+  
+  // Calcular contratos vencendo em 30 dias
+  const today = new Date();
+  const expiringContracts = contracts.filter(contract => {
+    if (contract.status !== 'vigente') return false;
+    
+    const signatureDate = new Date(contract.dataAssinatura);
+    const expirationDate = new Date(signatureDate);
+    
+    // Calcular data de vencimento baseada na unidade
+    if (contract.prazoUnidade === 'meses') {
+      expirationDate.setMonth(expirationDate.getMonth() + contract.prazoExecucao);
+    } else if (contract.prazoUnidade === 'anos') {
+      expirationDate.setFullYear(expirationDate.getFullYear() + contract.prazoExecucao);
+    } else {
+      expirationDate.setDate(expirationDate.getDate() + contract.prazoExecucao);
+    }
+    
+    const daysUntilExpiration = Math.ceil((expirationDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    return daysUntilExpiration <= 30 && daysUntilExpiration > 0;
+  }).length;
+
+  // Calcular alertas pendentes (contratos vencidos + vencendo)
+  const expiredContracts = contracts.filter(contract => {
+    if (contract.status !== 'vigente') return false;
+    
+    const signatureDate = new Date(contract.dataAssinatura);
+    const expirationDate = new Date(signatureDate);
+    
+    if (contract.prazoUnidade === 'meses') {
+      expirationDate.setMonth(expirationDate.getMonth() + contract.prazoExecucao);
+    } else if (contract.prazoUnidade === 'anos') {
+      expirationDate.setFullYear(expirationDate.getFullYear() + contract.prazoExecucao);
+    } else {
+      expirationDate.setDate(expirationDate.getDate() + contract.prazoExecucao);
+    }
+    
+    return expirationDate < today;
+  }).length;
+
+  const alertsPendentes = expiringContracts + expiredContracts;
+
   const stats = [
     {
       title: 'Contratos Ativos',
-      value: 156,
+      value: activeContracts,
       icon: FileText,
       color: 'text-blue-600',
-      trend: { value: 12, isPositive: true }
+      trend: { value: 0, isPositive: true }
     },
     {
       title: 'Valor Total',
-      value: 'R$ 45.2M',
+      value: `R$ ${(totalValue / 1000000).toFixed(1)}M`,
       icon: DollarSign,
       color: 'text-green-600',
-      trend: { value: 8, isPositive: true }
+      trend: { value: 0, isPositive: true }
     },
     {
       title: 'Contratos Vencendo',
-      value: 23,
+      value: expiringContracts,
       icon: Clock,
       color: 'text-yellow-600',
-      trend: { value: 5, isPositive: false }
+      trend: { value: 0, isPositive: false }
     },
     {
       title: 'Alertas Pendentes',
-      value: 7,
+      value: alertsPendentes,
       icon: AlertTriangle,
       color: 'text-red-600',
-      trend: { value: 2, isPositive: false }
+      trend: { value: 0, isPositive: false }
     }
   ];
 
-  const recentContracts = [
-    { numero: '001/2024', objeto: 'Fornecimento de Material de Escritório', valor: 'R$ 150.000', status: 'Vigente' },
-    { numero: '002/2024', objeto: 'Serviços de Limpeza', valor: 'R$ 280.000', status: 'Vigente' },
-    { numero: '003/2024', objeto: 'Manutenção de Equipamentos', valor: 'R$ 95.000', status: 'Assinado' },
-  ];
+  // Últimos contratos cadastrados
+  const recentContracts = contracts
+    .sort((a, b) => new Date(b.dataAssinatura).getTime() - new Date(a.dataAssinatura).getTime())
+    .slice(0, 3)
+    .map(contract => ({
+      numero: contract.numero,
+      objeto: contract.objeto.length > 40 ? contract.objeto.substring(0, 40) + '...' : contract.objeto,
+      valor: `R$ ${contract.valor.toLocaleString('pt-BR')}`,
+      status: contract.status === 'vigente' ? 'Vigente' : 
+               contract.status === 'suspenso' ? 'Suspenso' :
+               contract.status === 'encerrado' ? 'Encerrado' : 'Rescindido'
+    }));
+
+  // Calcular progresso orçamentário (simulado)
+  const orcamentoExecutado = Math.min((totalValue / 50000000) * 100, 100); // Base de 50M
+  const contratosVigentesPercent = contracts.length > 0 ? (activeContracts / contracts.length) * 100 : 0;
 
   return (
     <div className="space-y-6">
@@ -59,16 +120,16 @@ export default function Dashboard() {
             <div>
               <div className="flex justify-between text-sm">
                 <span>Orçamento Executado</span>
-                <span>68%</span>
+                <span>{orcamentoExecutado.toFixed(0)}%</span>
               </div>
-              <Progress value={68} className="mt-2" />
+              <Progress value={orcamentoExecutado} className="mt-2" />
             </div>
             <div>
               <div className="flex justify-between text-sm">
                 <span>Contratos Vigentes</span>
-                <span>85%</span>
+                <span>{contratosVigentesPercent.toFixed(0)}%</span>
               </div>
-              <Progress value={85} className="mt-2" />
+              <Progress value={contratosVigentesPercent} className="mt-2" />
             </div>
             <div>
               <div className="flex justify-between text-sm">
@@ -85,24 +146,30 @@ export default function Dashboard() {
             <CardTitle>Contratos Recentes</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {recentContracts.map((contract, index) => (
-                <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div>
-                    <p className="font-medium">{contract.numero}</p>
-                    <p className="text-sm text-gray-600">{contract.objeto}</p>
+            {recentContracts.length === 0 ? (
+              <p className="text-center text-gray-500 py-8">Nenhum contrato cadastrado ainda</p>
+            ) : (
+              <div className="space-y-3">
+                {recentContracts.map((contract, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div>
+                      <p className="font-medium">{contract.numero}</p>
+                      <p className="text-sm text-gray-600">{contract.objeto}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium">{contract.valor}</p>
+                      <span className={`text-xs px-2 py-1 rounded-full ${
+                        contract.status === 'Vigente' ? 'bg-green-100 text-green-800' : 
+                        contract.status === 'Suspenso' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        {contract.status}
+                      </span>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-medium">{contract.valor}</p>
-                    <span className={`text-xs px-2 py-1 rounded-full ${
-                      contract.status === 'Vigente' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {contract.status}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

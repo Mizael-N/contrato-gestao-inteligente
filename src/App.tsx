@@ -6,25 +6,26 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Navbar from '@/components/layout/Navbar';
 import Dashboard from '@/components/dashboard/Dashboard';
-import ContractManager from '@/components/contracts/ContractManager';
+import ContractManagerWrapper from '@/components/contracts/ContractManagerWrapper';
 
 const queryClient = new QueryClient();
 
 const App = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [contracts, setContracts] = useState([]);
 
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard />;
+        return <Dashboard contracts={contracts} />;
       case 'contracts':
-        return <ContractManager />;
+        return <ContractManagerWrapper onContractsChange={setContracts} />;
       case 'suppliers':
         return <div className="p-8 text-center text-gray-500">Módulo de Fornecedores em desenvolvimento</div>;
       case 'settings':
         return <div className="p-8 text-center text-gray-500">Módulo de Configurações em desenvolvimento</div>;
       default:
-        return <Dashboard />;
+        return <Dashboard contracts={contracts} />;
     }
   };
 

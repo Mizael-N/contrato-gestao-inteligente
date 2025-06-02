@@ -1,4 +1,5 @@
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
 import { Contract, Aditivo } from '@/types/contract';
 import ContractList from './ContractList';
 import ContractForm from './ContractForm';
@@ -8,62 +9,12 @@ import ContractImport from './ContractImport';
 import ContractAlerts from './ContractAlerts';
 import { useToast } from '@/hooks/use-toast';
 
-// Dados mockados para demonstração
-const mockContracts: Contract[] = [
-  {
-    id: '1',
-    numero: '001/2024',
-    objeto: 'Fornecimento de material de escritório para todas as unidades administrativas',
-    contratante: 'Prefeitura Municipal',
-    contratada: 'Empresa ABC Ltda',
-    valor: 150000,
-    dataAssinatura: '2024-01-15',
-    prazoExecucao: 365,
-    modalidade: 'pregao',
-    status: 'vigente',
-    garantia: {
-      tipo: 'seguro_garantia',
-      valor: 7500,
-      dataVencimento: '2025-01-15'
-    },
-    fiscais: {
-      titular: 'João Silva',
-      substituto: 'Maria Santos'
-    },
-    aditivos: [],
-    pagamentos: [],
-    observacoes: 'Contrato com renovação automática por igual período',
-    documentos: []
-  },
-  {
-    id: '2',
-    numero: '002/2024',
-    objeto: 'Prestação de serviços de limpeza e conservação',
-    contratante: 'Prefeitura Municipal',
-    contratada: 'Limpeza Moderna S.A.',
-    valor: 280000,
-    dataAssinatura: '2024-02-01',
-    prazoExecucao: 730,
-    modalidade: 'concorrencia',
-    status: 'vigente',
-    garantia: {
-      tipo: 'fianca_bancaria',
-      valor: 14000,
-      dataVencimento: '2026-02-01'
-    },
-    fiscais: {
-      titular: 'Carlos Oliveira',
-      substituto: 'Ana Costa'
-    },
-    aditivos: [],
-    pagamentos: [],
-    observacoes: '',
-    documentos: []
-  }
-];
+interface ContractManagerProps {
+  contracts: Contract[];
+  onContractsChange: (contracts: Contract[]) => void;
+}
 
-export default function ContractManager() {
-  const [contracts, setContracts] = useState<Contract[]>(mockContracts);
+export default function ContractManager({ contracts, onContractsChange }: ContractManagerProps) {
   const [currentView, setCurrentView] = useState<'list' | 'form' | 'details' | 'addendum' | 'import'>('list');
   const [selectedContract, setSelectedContract] = useState<Contract | undefined>();
   const { toast } = useToast();
@@ -84,7 +35,8 @@ export default function ContractManager() {
   };
 
   const handleDelete = (contractId: string) => {
-    setContracts(contracts.filter(c => c.id !== contractId));
+    const updatedContracts = contracts.filter(c => c.id !== contractId);
+    onContractsChange(updatedContracts);
     toast({
       title: 'Contrato excluído',
       description: 'O contrato foi excluído com sucesso.',
@@ -113,9 +65,10 @@ export default function ContractManager() {
           { valor: addendumData.valorNovo } : {}),
       };
 
-      setContracts(contracts.map(c => 
+      const updatedContracts = contracts.map(c => 
         c.id === selectedContract.id ? updatedContract : c
-      ));
+      );
+      onContractsChange(updatedContracts);
 
       toast({
         title: 'Termo aditivo criado',
@@ -140,7 +93,7 @@ export default function ContractManager() {
       ...contractData
     } as Contract));
 
-    setContracts([...contracts, ...newContracts]);
+    onContractsChange([...contracts, ...newContracts]);
     
     toast({
       title: 'Contratos importados',
@@ -153,11 +106,29 @@ export default function ContractManager() {
   const handleSubmit = (contractData: Partial<Contract>) => {
     if (selectedContract) {
       // Atualizar contrato existente
-      setContracts(contracts.map(c => 
-        c.id === selectedContract.id 
-          ? { ...selectedContract, ...contractData }
-          : c
-      ));
+      const updatedContract = { ...selectedContract, ...contractData };
+      
+      // Se há dados de aditivo, criar um novo aditivo
+      if (contractData.tipoAditivo && contractData.dataAditivo) {
+        const newAddendum: Aditivo = {
+          id: Date.now().toString(),
+          numero: `Aditivo ${selectedContract.aditivos.length + 1}`,
+          tipo: contractData.tipoAditivo as any,
+          justificativa: contractData.justificativaAditivo || 'Aditivo adicionado via edição do contrato',
+          dataAssinatura: contractData.dataAditivo,
+          valorAnterior: contractData.tipoAditivo === 'valor' ? selectedContract.valor : undefined,
+          valorNovo: contractData.tipoAditivo === 'valor' ? contractData.valor : undefined,
+          prazoAnterior: contractData.tipoAditivo === 'prazo' ? selectedContract.prazoExecucao : undefined,
+          prazoNovo: contractData.tipoAditivo === 'prazo' ? contractData.prazoExecucao : undefined,
+        };
+        
+        updatedContract.aditivos = [...selectedContract.aditivos, newAddendum];
+      }
+      
+      const updatedContracts = contracts.map(c => 
+        c.id === selectedContract.id ? updatedContract : c
+      );
+      onContractsChange(updatedContracts);
       toast({
         title: 'Contrato atualizado',
         description: 'O contrato foi atualizado com sucesso.',
@@ -171,7 +142,7 @@ export default function ContractManager() {
         documentos: [],
         ...contractData
       } as Contract;
-      setContracts([...contracts, newContract]);
+      onContractsChange([...contracts, newContract]);
       toast({
         title: 'Contrato criado',
         description: 'O novo contrato foi criado com sucesso.',
