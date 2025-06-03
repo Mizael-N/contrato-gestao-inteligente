@@ -9,7 +9,204 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      addendums: {
+        Row: {
+          contract_id: string
+          created_at: string
+          data_assinatura: string
+          id: string
+          justificativa: string
+          numero: string
+          prazo_anterior: number | null
+          prazo_novo: number | null
+          tipo: string
+          valor_anterior: number | null
+          valor_novo: number | null
+        }
+        Insert: {
+          contract_id: string
+          created_at?: string
+          data_assinatura: string
+          id?: string
+          justificativa: string
+          numero: string
+          prazo_anterior?: number | null
+          prazo_novo?: number | null
+          tipo: string
+          valor_anterior?: number | null
+          valor_novo?: number | null
+        }
+        Update: {
+          contract_id?: string
+          created_at?: string
+          data_assinatura?: string
+          id?: string
+          justificativa?: string
+          numero?: string
+          prazo_anterior?: number | null
+          prazo_novo?: number | null
+          tipo?: string
+          valor_anterior?: number | null
+          valor_novo?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "addendums_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contracts: {
+        Row: {
+          contratada: string
+          contratante: string
+          created_at: string
+          data_assinatura: string
+          fiscal_substituto: string | null
+          fiscal_titular: string | null
+          garantia_tipo: string
+          garantia_valor: number
+          garantia_vencimento: string | null
+          id: string
+          modalidade: string
+          numero: string
+          objeto: string
+          observacoes: string | null
+          prazo_execucao: number
+          prazo_unidade: string
+          status: string
+          updated_at: string
+          valor: number
+        }
+        Insert: {
+          contratada: string
+          contratante: string
+          created_at?: string
+          data_assinatura: string
+          fiscal_substituto?: string | null
+          fiscal_titular?: string | null
+          garantia_tipo?: string
+          garantia_valor?: number
+          garantia_vencimento?: string | null
+          id?: string
+          modalidade?: string
+          numero: string
+          objeto: string
+          observacoes?: string | null
+          prazo_execucao?: number
+          prazo_unidade?: string
+          status?: string
+          updated_at?: string
+          valor?: number
+        }
+        Update: {
+          contratada?: string
+          contratante?: string
+          created_at?: string
+          data_assinatura?: string
+          fiscal_substituto?: string | null
+          fiscal_titular?: string | null
+          garantia_tipo?: string
+          garantia_valor?: number
+          garantia_vencimento?: string | null
+          id?: string
+          modalidade?: string
+          numero?: string
+          objeto?: string
+          observacoes?: string | null
+          prazo_execucao?: number
+          prazo_unidade?: string
+          status?: string
+          updated_at?: string
+          valor?: number
+        }
+        Relationships: []
+      }
+      documents: {
+        Row: {
+          contract_id: string
+          created_at: string
+          data_upload: string
+          id: string
+          nome: string
+          tipo: string
+          url: string
+        }
+        Insert: {
+          contract_id: string
+          created_at?: string
+          data_upload?: string
+          id?: string
+          nome: string
+          tipo: string
+          url: string
+        }
+        Update: {
+          contract_id?: string
+          created_at?: string
+          data_upload?: string
+          id?: string
+          nome?: string
+          tipo?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          contract_id: string
+          created_at: string
+          data_pagamento: string | null
+          data_vencimento: string
+          id: string
+          numero: string
+          observacoes: string | null
+          status: string
+          valor: number
+        }
+        Insert: {
+          contract_id: string
+          created_at?: string
+          data_pagamento?: string | null
+          data_vencimento: string
+          id?: string
+          numero: string
+          observacoes?: string | null
+          status?: string
+          valor: number
+        }
+        Update: {
+          contract_id?: string
+          created_at?: string
+          data_pagamento?: string | null
+          data_vencimento?: string
+          id?: string
+          numero?: string
+          observacoes?: string | null
+          status?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

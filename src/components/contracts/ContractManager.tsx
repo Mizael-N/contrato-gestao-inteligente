@@ -1,23 +1,35 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Contract, Aditivo } from '@/types/contract';
+import { useContracts } from '@/hooks/useContracts';
 import ContractList from './ContractList';
 import ContractForm from './ContractForm';
 import ContractDetails from './ContractDetails';
 import AddendumForm from './AddendumForm';
 import ContractImport from './ContractImport';
 import ContractAlerts from './ContractAlerts';
-import { useToast } from '@/hooks/use-toast';
 
 interface ContractManagerProps {
   contracts: Contract[];
   onContractsChange: (contracts: Contract[]) => void;
 }
 
-export default function ContractManager({ contracts, onContractsChange }: ContractManagerProps) {
+export default function ContractManager({ contracts: propContracts, onContractsChange }: ContractManagerProps) {
   const [currentView, setCurrentView] = useState<'list' | 'form' | 'details' | 'addendum' | 'import'>('list');
   const [selectedContract, setSelectedContract] = useState<Contract | undefined>();
-  const { toast } = useToast();
+  
+  // Usar o hook personalizado para contratos do Supabase
+  const { 
+    contracts: dbContracts, 
+    loading, 
+    createContract, 
+    updateContract, 
+    deleteContract, 
+    createAddendum 
+  } = useContracts();
+
+  // Usar contratos do banco de dados se disponível, senão usar os props
+  const contracts = dbContracts.length > 0 ? dbContracts : propContracts;
 
   const handleNew = () => {
     setSelectedContract(undefined);
@@ -34,13 +46,12 @@ export default function ContractManager({ contracts, onContractsChange }: Contra
     setCurrentView('details');
   };
 
-  const handleDelete = (contractId: string) => {
-    const updatedContracts = contracts.filter(c => c.id !== contractId);
-    onContractsChange(updatedContracts);
-    toast({
-      title: 'Contrato excluído',
-      description: 'O contrato foi excluído com sucesso.',
-    });
+  const handleDelete = async (contractId: string) => {
+    try {
+      await deleteContract(contractId);
+    } catch (error) {
+      console.error('Erro ao excluir contrato:', error);
+    }
   };
 
   const handleCreateAddendum = (contract: Contract) => {
@@ -48,35 +59,15 @@ export default function ContractManager({ contracts, onContractsChange }: Contra
     setCurrentView('addendum');
   };
 
-  const handleAddendumSubmit = (addendumData: Omit<Aditivo, 'id'>) => {
+  const handleAddendumSubmit = async (addendumData: Omit<Aditivo, 'id'>) => {
     if (selectedContract) {
-      const newAddendum: Aditivo = {
-        id: Date.now().toString(),
-        ...addendumData
-      };
-
-      const updatedContract = {
-        ...selectedContract,
-        aditivos: [...selectedContract.aditivos, newAddendum],
-        // Atualiza valores do contrato se for aditivo de prazo ou valor
-        ...(addendumData.tipo === 'prazo' && addendumData.prazoNovo ? 
-          { prazoExecucao: addendumData.prazoNovo } : {}),
-        ...(addendumData.tipo === 'valor' && addendumData.valorNovo ? 
-          { valor: addendumData.valorNovo } : {}),
-      };
-
-      const updatedContracts = contracts.map(c => 
-        c.id === selectedContract.id ? updatedContract : c
-      );
-      onContractsChange(updatedContracts);
-
-      toast({
-        title: 'Termo aditivo criado',
-        description: 'O termo aditivo foi adicionado ao contrato com sucesso.',
-      });
-      
-      setCurrentView('details');
-      setSelectedContract(updatedContract);
+      try {
+        await createAddendum(selectedContract.id, addendumData);
+        setCurrentView('list');
+        setSelectedContract(undefined);
+      } catch (error) {
+        console.error('Erro ao criar aditivo:', error);
+      }
     }
   };
 
@@ -84,77 +75,62 @@ export default function ContractManager({ contracts, onContractsChange }: Contra
     setCurrentView('import');
   };
 
-  const handleImportSubmit = (importedContracts: Partial<Contract>[]) => {
-    const newContracts: Contract[] = importedContracts.map(contractData => ({
-      id: Date.now().toString() + Math.random(),
-      aditivos: [],
-      pagamentos: [],
-      documentos: [],
-      ...contractData
-    } as Contract));
-
-    onContractsChange([...contracts, ...newContracts]);
-    
-    toast({
-      title: 'Contratos importados',
-      description: `${newContracts.length} contratos foram importados com sucesso.`,
-    });
-    
-    setCurrentView('list');
+  const handleImportSubmit = async (importedContracts: Partial<Contract>[]) => {
+    try {
+      // Criar contratos um por um
+      for (const contractData of importedContracts) {
+        await createContract(contractData);
+      }
+      setCurrentView('list');
+    } catch (error) {
+      console.error('Erro ao importar contratos:', error);
+    }
   };
 
-  const handleSubmit = (contractData: Partial<Contract>) => {
-    if (selectedContract) {
-      // Atualizar contrato existente
-      const updatedContract = { ...selectedContract, ...contractData };
-      
-      // Se há dados de aditivo, criar um novo aditivo
-      if (contractData.tipoAditivo && contractData.dataAditivo) {
-        const newAddendum: Aditivo = {
-          id: Date.now().toString(),
-          numero: `Aditivo ${selectedContract.aditivos.length + 1}`,
-          tipo: contractData.tipoAditivo as any,
-          justificativa: contractData.justificativaAditivo || 'Aditivo adicionado via edição do contrato',
-          dataAssinatura: contractData.dataAditivo,
-          valorAnterior: contractData.tipoAditivo === 'valor' ? selectedContract.valor : undefined,
-          valorNovo: contractData.tipoAditivo === 'valor' ? contractData.valor : undefined,
-          prazoAnterior: contractData.tipoAditivo === 'prazo' ? selectedContract.prazoExecucao : undefined,
-          prazoNovo: contractData.tipoAditivo === 'prazo' ? contractData.prazoExecucao : undefined,
-        };
+  const handleSubmit = async (contractData: Partial<Contract>) => {
+    try {
+      if (selectedContract) {
+        // Atualizar contrato existente
+        await updateContract(selectedContract.id, contractData);
         
-        updatedContract.aditivos = [...selectedContract.aditivos, newAddendum];
+        // Se há dados de aditivo, criar um novo aditivo
+        if (contractData.tipoAditivo && contractData.dataAditivo) {
+          const newAddendum: Omit<Aditivo, 'id'> = {
+            numero: `Aditivo ${selectedContract.aditivos.length + 1}`,
+            tipo: contractData.tipoAditivo as any,
+            justificativa: contractData.justificativaAditivo || 'Aditivo adicionado via edição do contrato',
+            dataAssinatura: contractData.dataAditivo,
+            valorAnterior: contractData.tipoAditivo === 'valor' ? selectedContract.valor : undefined,
+            valorNovo: contractData.tipoAditivo === 'valor' ? contractData.valor : undefined,
+            prazoAnterior: contractData.tipoAditivo === 'prazo' ? selectedContract.prazoExecucao : undefined,
+            prazoNovo: contractData.tipoAditivo === 'prazo' ? contractData.prazoExecucao : undefined,
+          };
+          
+          await createAddendum(selectedContract.id, newAddendum);
+        }
+      } else {
+        // Criar novo contrato
+        await createContract(contractData);
       }
-      
-      const updatedContracts = contracts.map(c => 
-        c.id === selectedContract.id ? updatedContract : c
-      );
-      onContractsChange(updatedContracts);
-      toast({
-        title: 'Contrato atualizado',
-        description: 'O contrato foi atualizado com sucesso.',
-      });
-    } else {
-      // Criar novo contrato
-      const newContract: Contract = {
-        id: Date.now().toString(),
-        aditivos: [],
-        pagamentos: [],
-        documentos: [],
-        ...contractData
-      } as Contract;
-      onContractsChange([...contracts, newContract]);
-      toast({
-        title: 'Contrato criado',
-        description: 'O novo contrato foi criado com sucesso.',
-      });
+      setCurrentView('list');
+      setSelectedContract(undefined);
+    } catch (error) {
+      console.error('Erro ao salvar contrato:', error);
     }
-    setCurrentView('list');
   };
 
   const handleCancel = () => {
     setCurrentView('list');
     setSelectedContract(undefined);
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-lg">Carregando contratos...</div>
+      </div>
+    );
+  }
 
   if (currentView === 'form') {
     return (
