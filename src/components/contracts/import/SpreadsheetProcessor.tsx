@@ -29,12 +29,12 @@ export const processSpreadsheet = async (
       
       const worksheet = workbook.Sheets[sheetName];
       
-      // Converter para JSON para análise
+      // Converter para JSON para análise - garantir que seja any[][]
       const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
         header: 1,
         defval: '',
         raw: false 
-      });
+      }) as any[][];
       
       console.log(`📄 Aba "${sheetName}" possui ${jsonData.length} linhas`);
       

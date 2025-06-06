@@ -1,18 +1,16 @@
-
 import { Contract } from '@/types/contract';
 
 // Mapas de correspondência para identificar colunas
 const FIELD_MAPPINGS = {
   numero: ['numero', 'número', 'contrato', 'processo', 'num', 'nº', 'number'],
   objeto: ['objeto', 'descrição', 'descricao', 'servico', 'serviço', 'description', 'item'],
-  contratante: ['contratante', 'orgao', 'órgão', 'cliente', 'solicitante'],
+  contratante: ['contratante', 'orgao', 'órgão', 'cliente', 'solicitante', 'prefeitura', 'municipio', 'município', 'government'],
   contratada: ['contratada', 'empresa', 'fornecedor', 'prestador', 'supplier'],
   valor: ['valor', 'preco', 'preço', 'price', 'amount', 'total', 'custo'],
   dataAssinatura: ['data', 'assinatura', 'inicio', 'início', 'date', 'signed'],
   prazoExecucao: ['prazo', 'duracao', 'duração', 'meses', 'dias', 'duration'],
   modalidade: ['modalidade', 'tipo', 'licitacao', 'licitação', 'modality'],
   status: ['status', 'situacao', 'situação', 'estado', 'state'],
-  contratante: ['contratante', 'prefeitura', 'municipio', 'município', 'government'],
   fiscal: ['fiscal', 'responsavel', 'responsável', 'gestor', 'manager'],
   garantia: ['garantia', 'caucao', 'caução', 'seguro', 'guarantee']
 };
