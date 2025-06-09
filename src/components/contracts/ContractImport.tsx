@@ -22,6 +22,7 @@ export default function ContractImport({ onImport, onCancel }: ContractImportPro
   const [error, setError] = useState<string>('');
   const [extractedText, setExtractedText] = useState<string>('');
   const [fileType, setFileType] = useState<'spreadsheet' | 'document' | 'image' | null>(null);
+  const [importProgress, setImportProgress] = useState<{ stage: string; progress: number; message: string } | null>(null);
   
   const { processDocument, processing, progress } = useDocumentProcessor();
 
@@ -32,6 +33,7 @@ export default function ContractImport({ onImport, onCancel }: ContractImportPro
       setError('');
       setExtractedText('');
       setPreview([]);
+      setImportProgress(null);
       
       const fileName = selectedFile.name.toLowerCase();
       const fileTypeCheck = selectedFile.type;
@@ -39,7 +41,7 @@ export default function ContractImport({ onImport, onCancel }: ContractImportPro
       // Determinar tipo de arquivo
       if (fileName.includes('.xlsx') || fileName.includes('.xls') || fileName.includes('.csv') || fileName.includes('.ods')) {
         setFileType('spreadsheet');
-        processSpreadsheet(selectedFile, setImporting, setPreview, setError);
+        processSpreadsheet(selectedFile, setImporting, setPreview, setError, setImportProgress);
       } else if (fileName.includes('.pdf') || fileName.includes('.docx') || fileName.includes('.doc')) {
         setFileType('document');
         processDocumentFile(selectedFile);
@@ -107,7 +109,7 @@ PRAZO: ${contract.prazoExecucao} ${contract.prazoUnidade}
           <ImportProgress
             processing={processing}
             importing={importing}
-            progress={progress}
+            progress={importProgress || progress}
             fileType={fileType}
             extractedText={extractedText}
           />

@@ -6,12 +6,15 @@ export const processSpreadsheet = async (
   file: File,
   setImporting: (importing: boolean) => void,
   setPreview: (preview: Partial<Contract>[]) => void,
-  setError: (error: string) => void
+  setError: (error: string) => void,
+  setProgress?: (progress: { stage: string; progress: number; message: string }) => void
 ) => {
   setImporting(true);
   
   try {
     console.log('🔍 Iniciando processamento completo da planilha:', file.name, 'Tipo:', file.type, 'Tamanho:', file.size);
+    
+    setProgress?.({ stage: 'loading', progress: 10, message: 'Carregando planilha...' });
     
     // Usar biblioteca XLSX para ler todas as abas
     const XLSX = await import('xlsx');
@@ -21,11 +24,22 @@ export const processSpreadsheet = async (
     
     console.log('📊 Planilha carregada. Abas encontradas:', workbook.SheetNames);
     
+    setProgress?.({ stage: 'analyzing', progress: 30, message: `Analisando ${workbook.SheetNames.length} aba(s)...` });
+    
     const allContracts: Partial<Contract>[] = [];
+    const totalSheets = workbook.SheetNames.length;
     
     // Processar cada aba da planilha
-    for (const sheetName of workbook.SheetNames) {
+    for (let i = 0; i < workbook.SheetNames.length; i++) {
+      const sheetName = workbook.SheetNames[i];
       console.log(`📋 Processando aba: ${sheetName}`);
+      
+      const progressPercent = 30 + Math.round((i / totalSheets) * 50);
+      setProgress?.({ 
+        stage: 'processing', 
+        progress: progressPercent, 
+        message: `Processando aba "${sheetName}" (${i + 1}/${totalSheets})...` 
+      });
       
       const worksheet = workbook.Sheets[sheetName];
       
@@ -44,6 +58,8 @@ export const processSpreadsheet = async (
         allContracts.push(...contractsFromSheet);
       }
     }
+    
+    setProgress?.({ stage: 'finalizing', progress: 90, message: 'Finalizando extração de dados...' });
     
     console.log(`✅ Processamento concluído. ${allContracts.length} contratos extraídos de ${workbook.SheetNames.length} abas`);
     
@@ -80,12 +96,19 @@ export const processSpreadsheet = async (
       allContracts.push(sampleContract);
     }
     
-    setPreview(allContracts);
+    setProgress?.({ stage: 'complete', progress: 100, message: `✅ ${allContracts.length} contratos extraídos com sucesso!` });
+    
+    // Pequeno delay para mostrar o progresso completo
+    setTimeout(() => {
+      setPreview(allContracts);
+    }, 500);
     
   } catch (err) {
     console.error('❌ Erro no processamento da planilha:', err);
     setError(`Erro ao processar a planilha "${file.name}". Verifique se o arquivo não está corrompido e tente novamente. Detalhes: ${(err as Error).message}`);
   } finally {
-    setImporting(false);
+    setTimeout(() => {
+      setImporting(false);
+    }, 600);
   }
 };
