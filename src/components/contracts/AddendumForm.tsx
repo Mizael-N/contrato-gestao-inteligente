@@ -88,7 +88,7 @@ export default function AddendumForm({ contract, onSubmit, onCancel }: AddendumF
             </div>
             <div>
               <Label htmlFor="tipo">Tipo do Termo Aditivo</Label>
-              <Select value={formData.tipo} onValueChange={(value) => setFormData({ ...formData, tipo: value as any })}>
+              <Select value={formData.tipo} onValueChange={(value: 'prazo' | 'valor' | 'qualitativo') => setFormData({ ...formData, tipo: value })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o tipo" />
                 </SelectTrigger>
@@ -125,7 +125,7 @@ export default function AddendumForm({ contract, onSubmit, onCancel }: AddendumF
             <div className="space-y-4">
               <div>
                 <Label htmlFor="prazoUnidade">Unidade de Prazo</Label>
-                <Select value={formData.prazoUnidade} onValueChange={(value) => setFormData({ ...formData, prazoUnidade: value as any })}>
+                <Select value={formData.prazoUnidade} onValueChange={(value: 'dias' | 'meses' | 'anos') => setFormData({ ...formData, prazoUnidade: value })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione a unidade" />
                   </SelectTrigger>
