@@ -39,6 +39,7 @@ export interface Aditivo {
   valorNovo?: number;
   prazoAnterior?: number;
   prazoNovo?: number;
+  prazoUnidade?: 'dias' | 'meses' | 'anos'; // Nova propriedade
   dataAssinatura: string;
 }
 

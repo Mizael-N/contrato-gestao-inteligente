@@ -23,6 +23,7 @@ export default function AddendumForm({ contract, onSubmit, onCancel }: AddendumF
     valorNovo: contract.valor,
     prazoAnterior: contract.prazoExecucao,
     prazoNovo: contract.prazoExecucao,
+    prazoUnidade: contract.prazoUnidade || 'dias' as 'dias' | 'meses' | 'anos',
     dataAssinatura: '',
   });
 
@@ -44,6 +45,7 @@ export default function AddendumForm({ contract, onSubmit, onCancel }: AddendumF
     if (formData.tipo === 'prazo') {
       addendum.prazoAnterior = formData.prazoAnterior;
       addendum.prazoNovo = formData.prazoNovo;
+      addendum.prazoUnidade = formData.prazoUnidade;
     }
 
     onSubmit(addendum);
@@ -59,6 +61,12 @@ export default function AddendumForm({ contract, onSubmit, onCancel }: AddendumF
     console.log('Additive type options:', options);
     return options;
   };
+
+  const getPrazoUnidadeOptions = () => [
+    { value: 'dias', label: 'Dias' },
+    { value: 'meses', label: 'Meses' },
+    { value: 'anos', label: 'Anos' },
+  ];
 
   return (
     <Card className="max-w-4xl mx-auto">
@@ -114,26 +122,43 @@ export default function AddendumForm({ contract, onSubmit, onCancel }: AddendumF
           </div>
 
           {formData.tipo === 'prazo' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-4">
               <div>
-                <Label htmlFor="prazoAnterior">Prazo Anterior (dias)</Label>
-                <Input
-                  id="prazoAnterior"
-                  type="number"
-                  value={formData.prazoAnterior}
-                  onChange={(e) => setFormData({ ...formData, prazoAnterior: parseInt(e.target.value) })}
-                  disabled
-                />
+                <Label htmlFor="prazoUnidade">Unidade de Prazo</Label>
+                <Select value={formData.prazoUnidade} onValueChange={(value) => setFormData({ ...formData, prazoUnidade: value as any })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a unidade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {getPrazoUnidadeOptions().map(option => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <div>
-                <Label htmlFor="prazoNovo">Novo Prazo (dias)</Label>
-                <Input
-                  id="prazoNovo"
-                  type="number"
-                  value={formData.prazoNovo}
-                  onChange={(e) => setFormData({ ...formData, prazoNovo: parseInt(e.target.value) })}
-                  required
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="prazoAnterior">Prazo Anterior ({formData.prazoUnidade})</Label>
+                  <Input
+                    id="prazoAnterior"
+                    type="number"
+                    value={formData.prazoAnterior}
+                    onChange={(e) => setFormData({ ...formData, prazoAnterior: parseInt(e.target.value) })}
+                    disabled
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="prazoNovo">Novo Prazo ({formData.prazoUnidade})</Label>
+                  <Input
+                    id="prazoNovo"
+                    type="number"
+                    value={formData.prazoNovo}
+                    onChange={(e) => setFormData({ ...formData, prazoNovo: parseInt(e.target.value) })}
+                    required
+                  />
+                </div>
               </div>
             </div>
           )}

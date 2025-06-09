@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Navbar from '@/components/layout/Navbar';
 import Dashboard from '@/components/dashboard/Dashboard';
 import ContractManager from '@/components/contracts/ContractManager';
+import Settings from '@/components/settings/Settings';
 import { Contract } from '@/types/contract';
 
 const queryClient = new QueryClient();
@@ -29,7 +30,7 @@ const App = () => {
       case 'suppliers':
         return <div className="p-8 text-center text-gray-500">Módulo de Fornecedores em desenvolvimento</div>;
       case 'settings':
-        return <div className="p-8 text-center text-gray-500">Módulo de Configurações em desenvolvimento</div>;
+        return <Settings />;
       default:
         return <Dashboard contracts={contracts} />;
     }
