@@ -63,7 +63,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return null;
       }
 
-      return data;
+      // Garantir que o role seja do tipo correto
+      const profileData: Profile = {
+        ...data,
+        role: (data.role === 'admin' || data.role === 'user') ? data.role : 'user'
+      };
+
+      return profileData;
     } catch (error) {
       console.error('Erro ao buscar perfil:', error);
       return null;
