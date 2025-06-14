@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -8,8 +9,6 @@ import Dashboard from '@/components/dashboard/Dashboard';
 import ContractManager from '@/components/contracts/ContractManager';
 import Settings from '@/components/settings/Settings';
 import { Contract } from '@/types/contract';
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/layout/AppSidebar";
 
 // LOG para debug de atualização do App
 console.log("[App] Component file loaded");
@@ -53,22 +52,20 @@ const App = () => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <SidebarProvider>
-        <div className="min-h-screen flex w-full bg-gray-50">
-          <AppSidebar activeTab={activeTab} onTabChange={setActiveTab} />
-          <div className="flex-1 flex flex-col">
-            <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 w-full">
-              {renderContent() || (
-                <div className="text-center text-gray-400">
-                  Nenhum conteúdo para mostrar no momento.
-                </div>
-              )}
-            </main>
-          </div>
+      <TooltipProvider>
+        <div className="min-h-screen bg-gray-50">
+          <Navbar activeTab={activeTab} onTabChange={setActiveTab} />
+          <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            {renderContent() || (
+              <div className="text-center text-gray-400">
+                Nenhum conteúdo para mostrar no momento.
+              </div>
+            )}
+          </main>
           <Toaster />
           <Sonner />
         </div>
-      </SidebarProvider>
+      </TooltipProvider>
     </QueryClientProvider>
   );
 };

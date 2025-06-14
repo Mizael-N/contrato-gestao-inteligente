@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Contract, Aditivo } from '@/types/contract';
 import { useContracts } from '@/hooks/useContracts';
-import ContractList from './ContractList';
+import ContractGrid from './ContractGrid';
 import ContractForm from './ContractForm';
 import ContractDetails from './ContractDetails';
 import AddendumForm from './AddendumForm';
@@ -15,7 +15,7 @@ interface ContractManagerProps {
 }
 
 export default function ContractManager({ contracts: propContracts, onContractsChange }: ContractManagerProps) {
-  const [currentView, setCurrentView] = useState<'list' | 'form' | 'details' | 'addendum' | 'import'>('list');
+  const [currentView, setCurrentView] = useState<'grid' | 'form' | 'details' | 'addendum' | 'import'>('grid');
   const [selectedContract, setSelectedContract] = useState<Contract | undefined>();
   
   // Usar o hook personalizado para contratos do Supabase
@@ -63,7 +63,7 @@ export default function ContractManager({ contracts: propContracts, onContractsC
     if (selectedContract) {
       try {
         await createAddendum(selectedContract.id, addendumData);
-        setCurrentView('list');
+        setCurrentView('grid');
         setSelectedContract(undefined);
       } catch (error) {
         console.error('Erro ao criar aditivo:', error);
@@ -81,7 +81,7 @@ export default function ContractManager({ contracts: propContracts, onContractsC
       for (const contractData of importedContracts) {
         await createContract(contractData);
       }
-      setCurrentView('list');
+      setCurrentView('grid');
     } catch (error) {
       console.error('Erro ao importar contratos:', error);
     }
@@ -112,7 +112,7 @@ export default function ContractManager({ contracts: propContracts, onContractsC
         // Criar novo contrato
         await createContract(contractData);
       }
-      setCurrentView('list');
+      setCurrentView('grid');
       setSelectedContract(undefined);
     } catch (error) {
       console.error('Erro ao salvar contrato:', error);
@@ -120,7 +120,7 @@ export default function ContractManager({ contracts: propContracts, onContractsC
   };
 
   const handleCancel = () => {
-    setCurrentView('list');
+    setCurrentView('grid');
     setSelectedContract(undefined);
   };
 
@@ -177,7 +177,7 @@ export default function ContractManager({ contracts: propContracts, onContractsC
         contracts={contracts}
         onCreateAddendum={handleCreateAddendum}
       />
-      <ContractList
+      <ContractGrid
         contracts={contracts}
         onEdit={handleEdit}
         onDelete={handleDelete}
