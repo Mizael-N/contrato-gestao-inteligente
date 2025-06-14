@@ -50,8 +50,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
+  console.log('AuthProvider - Current state:', { user: !!user, profile: !!profile, session: !!session, loading });
+
   const fetchProfile = async (userId: string) => {
     try {
+      console.log('fetchProfile - Fetching profile for user:', userId);
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -69,6 +72,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         role: (data.role === 'admin' || data.role === 'user') ? data.role : 'user'
       };
 
+      console.log('fetchProfile - Profile fetched:', profileData);
       return profileData;
     } catch (error) {
       console.error('Erro ao buscar perfil:', error);
@@ -77,14 +81,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   useEffect(() => {
+    console.log('AuthProvider - Setting up auth listener');
+    
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state change:', event, 'Session:', !!session);
         setSession(session);
         setUser(session?.user ?? null);
 
         if (session?.user) {
           // Fetch user profile
+          console.log('Auth state change - Fetching profile for user:', session.user.id);
           const userProfile = await fetchProfile(session.user.id);
           setProfile(userProfile);
         } else {
@@ -92,23 +100,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
 
         setLoading(false);
+        console.log('Auth state change - Loading set to false');
       }
     );
 
     // Check for existing session
+    console.log('AuthProvider - Checking for existing session');
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      console.log('Initial session check:', !!session);
       setSession(session);
       setUser(session?.user ?? null);
 
       if (session?.user) {
+        console.log('Initial session - Fetching profile for user:', session.user.id);
         const userProfile = await fetchProfile(session.user.id);
         setProfile(userProfile);
       }
 
       setLoading(false);
+      console.log('Initial session check - Loading set to false');
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      console.log('AuthProvider - Cleaning up auth listener');
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {
@@ -206,6 +222,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const isAdmin = profile?.role === 'admin';
+
+  console.log('AuthProvider - Rendering with isAdmin:', isAdmin);
 
   return (
     <AuthContext.Provider

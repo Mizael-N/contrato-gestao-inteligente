@@ -22,6 +22,8 @@ function ProtectedApp() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [contracts, setContracts] = useState<Contract[]>([]);
 
+  console.log('ProtectedApp - user:', user, 'loading:', loading);
+
   const handleContractsChange = (newContracts: Contract[]) => {
     setContracts(newContracts);
   };
@@ -44,6 +46,7 @@ function ProtectedApp() {
   };
 
   if (loading) {
+    console.log('ProtectedApp - Showing loading screen');
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
@@ -55,9 +58,11 @@ function ProtectedApp() {
   }
 
   if (!user) {
+    console.log('ProtectedApp - No user, redirecting to auth');
     return <Navigate to="/auth" replace />;
   }
 
+  console.log('ProtectedApp - Rendering main app');
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Navbar activeTab={activeTab} onTabChange={setActiveTab} />
@@ -69,6 +74,8 @@ function ProtectedApp() {
 }
 
 const App = () => {
+  console.log('App component initializing');
+  
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
