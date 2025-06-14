@@ -63,6 +63,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (error) {
         console.error('Erro ao buscar perfil:', error);
+        // Se não encontrar o perfil, criar um perfil padrão
+        if (error.code === 'PGRST116') {
+          console.log('Profile not found, user can continue without profile');
+          return null;
+        }
         return null;
       }
 
@@ -93,8 +98,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (session?.user) {
           // Fetch user profile
           console.log('Auth state change - Fetching profile for user:', session.user.id);
-          const userProfile = await fetchProfile(session.user.id);
-          setProfile(userProfile);
+          try {
+            const userProfile = await fetchProfile(session.user.id);
+            setProfile(userProfile);
+          } catch (error) {
+            console.error('Error fetching profile in auth state change:', error);
+            setProfile(null);
+          }
         } else {
           setProfile(null);
         }
@@ -113,12 +123,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (session?.user) {
         console.log('Initial session - Fetching profile for user:', session.user.id);
-        const userProfile = await fetchProfile(session.user.id);
-        setProfile(userProfile);
+        try {
+          const userProfile = await fetchProfile(session.user.id);
+          setProfile(userProfile);
+        } catch (error) {
+          console.error('Error fetching profile in initial check:', error);
+          setProfile(null);
+        }
       }
 
       setLoading(false);
       console.log('Initial session check - Loading set to false');
+    }).catch((error) => {
+      console.error('Error in getSession:', error);
+      setLoading(false);
     });
 
     return () => {
