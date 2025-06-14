@@ -6,15 +6,26 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useTheme } from '@/hooks/useTheme';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function Settings() {
   const { theme, toggleTheme } = useTheme();
+  const { isAdmin } = useAuth();
   const { toast } = useToast();
   const [isClearing, setIsClearing] = useState(false);
 
   const handleClearData = async () => {
+    if (!isAdmin) {
+      toast({
+        title: "Acesso negado",
+        description: "Apenas administradores podem zerar o sistema.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsClearing(true);
     try {
       // Deletar dados em ordem devido às dependências de chave estrangeira
@@ -42,8 +53,8 @@ export default function Settings() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Configurações</h1>
-        <p className="text-muted-foreground">Gerencie as configurações do sistema</p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Configurações</h1>
+        <p className="text-gray-600 dark:text-gray-300">Gerencie as configurações do sistema</p>
       </div>
 
       <div className="grid gap-6">
@@ -119,49 +130,65 @@ export default function Settings() {
           </CardContent>
         </Card>
 
-        {/* Zona de Perigo */}
-        <Card className="border-destructive">
-          <CardHeader>
-            <CardTitle className="text-destructive">Zona de Perigo</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <Label className="text-destructive">Remover Todos os Dados</Label>
-                <div className="text-sm text-muted-foreground mt-1">
-                  Esta ação irá remover permanentemente todos os contratos, aditivos, pagamentos e documentos do sistema.
+        {/* Zona de Perigo - Apenas para Administradores */}
+        {isAdmin && (
+          <Card className="border-destructive">
+            <CardHeader>
+              <CardTitle className="text-destructive">Zona de Perigo</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-destructive">Remover Todos os Dados</Label>
+                  <div className="text-sm text-muted-foreground mt-1">
+                    Esta ação irá remover permanentemente todos os contratos, aditivos, pagamentos e documentos do sistema.
+                  </div>
                 </div>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" disabled={isClearing}>
+                      {isClearing ? 'Removendo...' : 'Zerar Sistema'}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Esta ação não pode ser desfeita. Isso irá remover permanentemente todos os dados do sistema, incluindo:
+                        <ul className="list-disc list-inside mt-2 space-y-1">
+                          <li>Todos os contratos</li>
+                          <li>Todos os termos aditivos</li>
+                          <li>Todos os pagamentos</li>
+                          <li>Todos os documentos</li>
+                        </ul>
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleClearData} className="bg-destructive text-destructive-foreground">
+                        Sim, zerar sistema
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="destructive" disabled={isClearing}>
-                    {isClearing ? 'Removendo...' : 'Zerar Sistema'}
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Esta ação não pode ser desfeita. Isso irá remover permanentemente todos os dados do sistema, incluindo:
-                      <ul className="list-disc list-inside mt-2 space-y-1">
-                        <li>Todos os contratos</li>
-                        <li>Todos os termos aditivos</li>
-                        <li>Todos os pagamentos</li>
-                        <li>Todos os documentos</li>
-                      </ul>
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleClearData} className="bg-destructive text-destructive-foreground">
-                      Sim, zerar sistema
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Aviso para usuários comuns */}
+        {!isAdmin && (
+          <Card className="border-muted">
+            <CardHeader>
+              <CardTitle className="text-muted-foreground">Acesso Restrito</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Algumas configurações avançadas estão disponíveis apenas para administradores do sistema.
+              </p>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

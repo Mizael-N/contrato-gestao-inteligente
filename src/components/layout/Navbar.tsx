@@ -1,7 +1,9 @@
 
-import { Building, FileText, Users, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { FileText, Home, Settings, Users } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import UserMenu from './UserMenu';
+import ThemeToggle from './ThemeToggle';
 
 interface NavbarProps {
   activeTab: string;
@@ -9,40 +11,46 @@ interface NavbarProps {
 }
 
 export default function Navbar({ activeTab, onTabChange }: NavbarProps) {
+  const { user } = useAuth();
+
+  if (!user) return null;
+
   const tabs = [
-    { id: 'dashboard', label: 'Dashboard', icon: Building },
+    { id: 'dashboard', label: 'Dashboard', icon: Home },
     { id: 'contracts', label: 'Contratos', icon: FileText },
     { id: 'suppliers', label: 'Fornecedores', icon: Users },
     { id: 'settings', label: 'Configurações', icon: Settings },
   ];
 
   return (
-    <nav className="bg-white shadow-sm border-b">
+    <nav className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <h1 className="text-xl font-bold text-blue-600">SGL - Sistema de Gestão de Licitações</h1>
+              <h1 className="text-xl font-bold text-gray-900 dark:text-white">SGL</h1>
+            </div>
+            <div className="hidden md:ml-6 md:flex md:space-x-8">
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <Button
+                    key={tab.id}
+                    variant={activeTab === tab.id ? "default" : "ghost"}
+                    onClick={() => onTabChange(tab.id)}
+                    className="flex items-center space-x-2"
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span>{tab.label}</span>
+                  </Button>
+                );
+              })}
             </div>
           </div>
-          <div className="flex space-x-1">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <Button
-                  key={tab.id}
-                  variant={activeTab === tab.id ? 'default' : 'ghost'}
-                  onClick={() => onTabChange(tab.id)}
-                  className={cn(
-                    'flex items-center space-x-2',
-                    activeTab === tab.id && 'bg-blue-600 text-white'
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                  <span>{tab.label}</span>
-                </Button>
-              );
-            })}
+          
+          <div className="flex items-center space-x-4">
+            <ThemeToggle />
+            <UserMenu />
           </div>
         </div>
       </div>
