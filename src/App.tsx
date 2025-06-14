@@ -9,6 +9,7 @@ import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import Navbar from '@/components/layout/Navbar';
 import Dashboard from '@/components/dashboard/Dashboard';
 import ContractManager from '@/components/contracts/ContractManager';
+import UserManagement from '@/components/users/UserManagement';
 import Settings from '@/components/settings/Settings';
 import Auth from '@/pages/Auth';
 import { Contract } from '@/types/contract';
@@ -33,6 +34,8 @@ function ProtectedApp() {
         return <ContractManager contracts={contracts} onContractsChange={handleContractsChange} />;
       case 'suppliers':
         return <div className="p-8 text-center text-gray-500 dark:text-gray-400">Módulo de Fornecedores em desenvolvimento</div>;
+      case 'users':
+        return <UserManagement />;
       case 'settings':
         return <Settings />;
       default:

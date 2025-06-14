@@ -11,7 +11,7 @@ interface NavbarProps {
 }
 
 export default function Navbar({ activeTab, onTabChange }: NavbarProps) {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
 
   if (!user) return null;
 
@@ -19,6 +19,7 @@ export default function Navbar({ activeTab, onTabChange }: NavbarProps) {
     { id: 'dashboard', label: 'Dashboard', icon: Home },
     { id: 'contracts', label: 'Contratos', icon: FileText },
     { id: 'suppliers', label: 'Fornecedores', icon: Users },
+    ...(isAdmin ? [{ id: 'users', label: 'Usuários', icon: Users }] : []),
     { id: 'settings', label: 'Configurações', icon: Settings },
   ];
 
