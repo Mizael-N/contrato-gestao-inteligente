@@ -27,10 +27,12 @@ export function AppSidebar({ activeTab, onTabChange }: { activeTab: string, onTa
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map(item => (
-                <SidebarMenuItem key={item.id} active={activeTab === item.id}>
+                <SidebarMenuItem key={item.id}>
                   <SidebarMenuButton asChild>
                     <button
-                      className="w-full flex items-center gap-2 py-2 px-2 rounded hover:bg-muted transition"
+                      className={`w-full flex items-center gap-2 py-2 px-2 rounded hover:bg-muted transition ${
+                        activeTab === item.id ? "bg-muted font-semibold" : ""
+                      }`}
                       onClick={() => onTabChange(item.id)}
                     >
                       <item.icon className="h-5 w-5" />

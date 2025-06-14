@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,12 +22,18 @@ export default function AddendumForm({ contract, onSubmit, onCancel }: AddendumF
     valorNovo: contract.valor,
     prazoAnterior: contract.prazoExecucao,
     prazoNovo: contract.prazoExecucao,
-    prazoUnidade: contract.prazoUnidade || 'dias' as 'dias' | 'meses' | 'anos',
+    prazoUnidade: (contract.prazoUnidade as 'dias' | 'meses' | 'anos') || 'dias',
     dataAssinatura: '',
   });
 
   const handleFormDataChange = (updates: Partial<typeof formData>) => {
-    setFormData(prev => ({ ...prev, ...updates }));
+    setFormData(prev => {
+      // Forçar casting correto se for atualizar prazoUnidade
+      if (updates.prazoUnidade && typeof updates.prazoUnidade === 'string') {
+        return { ...prev, ...updates, prazoUnidade: updates.prazoUnidade as 'dias' | 'meses' | 'anos' };
+      }
+      return { ...prev, ...updates };
+    });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -76,7 +81,7 @@ export default function AddendumForm({ contract, onSubmit, onCancel }: AddendumF
               formData={{
                 prazoAnterior: formData.prazoAnterior,
                 prazoNovo: formData.prazoNovo,
-                prazoUnidade: formData.prazoUnidade,
+                prazoUnidade: formData.prazoUnidade as 'dias' | 'meses' | 'anos',
               }}
               onFormDataChange={handleFormDataChange}
             />
