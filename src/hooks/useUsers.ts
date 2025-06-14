@@ -34,7 +34,13 @@ export const useUsers = () => {
         return;
       }
 
-      setUsers(data || []);
+      // Converter os dados para garantir que o role seja do tipo correto
+      const usersWithTypedRole: User[] = (data || []).map(user => ({
+        ...user,
+        role: (user.role === 'admin' || user.role === 'user') ? user.role : 'user'
+      }));
+
+      setUsers(usersWithTypedRole);
     } catch (error) {
       console.error('Erro ao buscar usuários:', error);
       toast({
