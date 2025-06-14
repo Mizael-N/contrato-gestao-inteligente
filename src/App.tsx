@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -53,20 +52,25 @@ const App = () => {
   };
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-gray-50">
-        <AppSidebar activeTab={activeTab} onTabChange={setActiveTab} />
-        <div className="flex-1 flex flex-col">
-          <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 w-full">
-            {renderContent()}
-          </main>
+    <QueryClientProvider client={queryClient}>
+      <SidebarProvider>
+        <div className="min-h-screen flex w-full bg-gray-50">
+          <AppSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+          <div className="flex-1 flex flex-col">
+            <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 w-full">
+              {renderContent() || (
+                <div className="text-center text-gray-400">
+                  Nenhum conteúdo para mostrar no momento.
+                </div>
+              )}
+            </main>
+          </div>
+          <Toaster />
+          <Sonner />
         </div>
-        <Toaster />
-        <Sonner />
-      </div>
-    </SidebarProvider>
+      </SidebarProvider>
+    </QueryClientProvider>
   );
 };
 
 export default App;
-
