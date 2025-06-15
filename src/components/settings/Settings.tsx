@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,10 +8,11 @@ import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { LogOut } from 'lucide-react';
 
 export default function Settings() {
   const { theme, toggleTheme } = useTheme();
-  const { isAdmin } = useAuth();
+  const { isAdmin, signOut } = useAuth();
   const { toast } = useToast();
   const [isClearing, setIsClearing] = useState(false);
 
@@ -48,6 +48,10 @@ export default function Settings() {
     } finally {
       setIsClearing(false);
     }
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
   };
 
   return (
@@ -127,6 +131,19 @@ export default function Settings() {
               </div>
               <Switch id="payment-alerts" defaultChecked />
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Conta */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Conta</CardTitle>
+          </CardHeader>
+          <CardContent>
+              <Button variant="outline" onClick={handleSignOut}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sair da Conta
+              </Button>
           </CardContent>
         </Card>
 

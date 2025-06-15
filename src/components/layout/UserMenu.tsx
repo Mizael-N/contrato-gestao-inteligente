@@ -3,10 +3,10 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/useAuth';
-import { LogOut, User, Settings } from 'lucide-react';
+import { User, Settings } from 'lucide-react';
 
 export default function UserMenu() {
-  const { profile, signOut, isAdmin } = useAuth();
+  const { profile, isAdmin } = useAuth();
 
   if (!profile) return null;
 
@@ -18,11 +18,6 @@ export default function UserMenu() {
       .join('')
       .toUpperCase()
       .slice(0, 2);
-  };
-
-  const handleSignOut = async () => {
-    console.log('🚪 UserMenu - Iniciando logout');
-    await signOut();
   };
 
   return (
@@ -60,11 +55,6 @@ export default function UserMenu() {
         <DropdownMenuItem>
           <Settings className="mr-2 h-4 w-4" />
           <span>Configurações</span>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleSignOut} className="text-red-600 focus:text-red-600 focus:bg-red-50">
-          <LogOut className="mr-2 h-4 w-4" />
-          <span>Sair</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
