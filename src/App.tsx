@@ -1,6 +1,6 @@
 
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -21,15 +21,14 @@ function ProtectedApp() {
   const { user, loading } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   
-  // Usar o hook useContracts para gerenciar contratos
-  const { contracts, loading: contractsLoading } = useContracts();
+  const contractsHook = useContracts();
 
   console.log('🏠 ProtectedApp - Render state:', { 
     hasUser: !!user, 
     loading, 
     activeTab,
-    contractsCount: contracts.length,
-    contractsLoading,
+    contractsCount: contractsHook.contracts.length,
+    contractsLoading: contractsHook.loading,
     timestamp: new Date().toISOString()
   });
 
@@ -37,9 +36,9 @@ function ProtectedApp() {
     console.log('🎨 ProtectedApp - Rendering content for tab:', activeTab);
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard contracts={contracts} loading={contractsLoading} />;
+        return <Dashboard contracts={contractsHook.contracts} loading={contractsHook.loading} />;
       case 'contracts':
-        return <ContractManager contracts={contracts} onContractsChange={() => {}} />;
+        return <ContractManager contracts={contractsHook.contracts} onContractsChange={contractsHook.refetch} />;
       case 'suppliers':
         return <div className="p-8 text-center text-gray-500 dark:text-gray-400">Módulo de Fornecedores em desenvolvimento</div>;
       case 'users':
@@ -47,7 +46,7 @@ function ProtectedApp() {
       case 'settings':
         return <Settings />;
       default:
-        return <Dashboard contracts={contracts} loading={contractsLoading} />;
+        return <Dashboard contracts={contractsHook.contracts} loading={contractsHook.loading} />;
     }
   };
 

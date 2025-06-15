@@ -6,11 +6,11 @@ import { useAuth } from '@/hooks/useAuth';
 
 export const useContracts = () => {
   const [contracts, setContracts] = useState<Contract[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Começar com false para não bloquear
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
 
-  console.log('📋 useContracts - Hook initialized, user exists:', !!user);
+  console.log('📋 useContracts - Hook initialized, user exists:', !!user, 'authLoading:', authLoading);
 
   // Converter dados do banco para o formato da aplicação
   const mapDatabaseToContract = (dbContract: any, addendums: any[] = [], payments: any[] = [], documents: any[] = []): Contract => {
@@ -94,9 +94,8 @@ export const useContracts = () => {
 
   // Buscar todos os contratos
   const fetchContracts = async () => {
-    if (!user) {
-      console.log('🚫 useContracts - No user, skipping fetch');
-      setLoading(false);
+    if (!user || authLoading) {
+      console.log('🚫 useContracts - No user or auth loading, skipping fetch');
       return;
     }
 
@@ -104,11 +103,20 @@ export const useContracts = () => {
       console.log('📥 useContracts - Starting to fetch contracts');
       setLoading(true);
       
-      // Buscar contratos
-      const { data: contractsData, error: contractsError } = await supabase
+      // Buscar contratos com timeout
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout')), 10000)
+      );
+
+      const contractsPromise = supabase
         .from('contracts')
         .select('*')
         .order('created_at', { ascending: false });
+
+      const { data: contractsData, error: contractsError } = await Promise.race([
+        contractsPromise,
+        timeoutPromise
+      ]) as any;
 
       if (contractsError) {
         console.error('❌ Error fetching contracts:', contractsError);
@@ -117,21 +125,28 @@ export const useContracts = () => {
 
       console.log('📊 useContracts - Found contracts:', contractsData?.length || 0);
 
-      // Buscar dados relacionados para cada contrato
+      // Buscar dados relacionados para cada contrato (máximo 5 para performance)
+      const limitedContracts = (contractsData || []).slice(0, 50); // Limitar para melhorar performance
       const contractsWithRelations = await Promise.all(
-        (contractsData || []).map(async (contract) => {
-          const [addendums, payments, documents] = await Promise.all([
-            supabase.from('addendums').select('*').eq('contract_id', contract.id),
-            supabase.from('payments').select('*').eq('contract_id', contract.id),
-            supabase.from('documents').select('*').eq('contract_id', contract.id)
-          ]);
+        limitedContracts.map(async (contract) => {
+          try {
+            const [addendums, payments, documents] = await Promise.all([
+              supabase.from('addendums').select('*').eq('contract_id', contract.id).limit(10),
+              supabase.from('payments').select('*').eq('contract_id', contract.id).limit(10),
+              supabase.from('documents').select('*').eq('contract_id', contract.id).limit(10)
+            ]);
 
-          return mapDatabaseToContract(
-            contract,
-            addendums.data || [],
-            payments.data || [],
-            documents.data || []
-          );
+            return mapDatabaseToContract(
+              contract,
+              addendums.data || [],
+              payments.data || [],
+              documents.data || []
+            );
+          } catch (error) {
+            console.error('❌ Error fetching related data for contract:', contract.id, error);
+            // Retornar contrato sem dados relacionados em caso de erro
+            return mapDatabaseToContract(contract, [], [], []);
+          }
         })
       );
 
@@ -144,7 +159,7 @@ export const useContracts = () => {
         description: 'Não foi possível carregar os contratos.',
         variant: 'destructive'
       });
-      setContracts([]); // Set empty array on error
+      setContracts([]);
     } finally {
       setLoading(false);
       console.log('🏁 useContracts - Fetch completed, loading set to false');
@@ -288,14 +303,18 @@ export const useContracts = () => {
   };
 
   useEffect(() => {
-    console.log('🔄 useContracts - Effect triggered, user exists:', !!user);
-    if (user) {
-      fetchContracts();
+    console.log('🔄 useContracts - Effect triggered, user exists:', !!user, 'authLoading:', authLoading);
+    if (user && !authLoading) {
+      // Delay para evitar corrida com o auth
+      const timeoutId = setTimeout(() => {
+        fetchContracts();
+      }, 100);
+      
+      return () => clearTimeout(timeoutId);
     } else {
-      setLoading(false);
       setContracts([]);
     }
-  }, [user]);
+  }, [user, authLoading]);
 
   return {
     contracts,

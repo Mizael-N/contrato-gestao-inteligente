@@ -74,7 +74,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (error.code === 'PGRST116') {
           console.log('⚠️ Profile not found, creating basic profile');
           
-          // Tentar criar um perfil básico
           const { data: newProfile, error: createError } = await supabase
             .from('profiles')
             .insert([{
@@ -97,7 +96,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return null;
       }
 
-      // Garantir que o role seja do tipo correto
       const profileData: Profile = {
         ...data,
         role: (data.role === 'admin' || data.role === 'user') ? data.role : 'user'
@@ -131,27 +129,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         if (session?.user) {
           console.log('👤 Auth state change - Fetching profile for user:', session.user.id);
-          try {
-            const userProfile = await fetchProfile(session.user.id);
+          // Use setTimeout to avoid blocking the auth state change
+          setTimeout(async () => {
             if (mounted) {
-              setProfile(userProfile);
+              try {
+                const userProfile = await fetchProfile(session.user.id);
+                if (mounted) {
+                  setProfile(userProfile);
+                  setLoading(false);
+                }
+              } catch (error) {
+                console.error('💥 Error fetching profile in auth state change:', error);
+                if (mounted) {
+                  setProfile(null);
+                  setLoading(false);
+                }
+              }
             }
-          } catch (error) {
-            console.error('💥 Error fetching profile in auth state change:', error);
-            if (mounted) {
-              setProfile(null);
-            }
-          }
+          }, 0);
         } else {
           console.log('🚫 No user in session, clearing profile');
           if (mounted) {
             setProfile(null);
+            setLoading(false);
           }
-        }
-
-        if (mounted) {
-          setLoading(false);
-          console.log('✅ Auth state change - Loading set to false');
         }
       }
     );
@@ -207,13 +208,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     };
 
-    // Add a shorter timeout to ensure loading never gets stuck
+    // Timeout para garantir que o loading não fique preso
     const timeoutId = setTimeout(() => {
       if (mounted && loading) {
         console.warn('⏰ Auth initialization timeout - forcing loading to false');
         setLoading(false);
       }
-    }, 5000); // Reduced to 5 seconds
+    }, 3000); // Reduzido para 3 segundos
 
     initializeAuth();
 
@@ -223,7 +224,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       clearTimeout(timeoutId);
       subscription.unsubscribe();
     };
-  }, []);
+  }, []); // Remover 'loading' das dependências para evitar loops
 
   const signIn = async (email: string, password: string) => {
     try {
