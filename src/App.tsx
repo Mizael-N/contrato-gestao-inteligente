@@ -14,6 +14,7 @@ import UserManagement from '@/components/users/UserManagement';
 import Settings from '@/components/settings/Settings';
 import Auth from '@/pages/Auth';
 import { Loader2 } from 'lucide-react';
+import SupplierManager from '@/components/suppliers/SupplierManager';
 
 const queryClient = new QueryClient();
 
@@ -59,7 +60,7 @@ function ProtectedApp() {
       case 'contracts':
         return <ContractManager contracts={contractsHook.contracts} onContractsChange={contractsHook.refetch} />;
       case 'suppliers':
-        return <div className="p-8 text-center text-gray-500 dark:text-gray-400">Módulo de Fornecedores em desenvolvimento</div>;
+        return <SupplierManager />;
       case 'users':
         return <UserManagement />;
       case 'settings':
