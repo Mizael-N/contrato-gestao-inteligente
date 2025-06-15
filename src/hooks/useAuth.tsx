@@ -1,38 +1,12 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+
+import { useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-
-interface Profile {
-  id: string;
-  email: string;
-  name: string | null;
-  role: 'admin' | 'user';
-  created_at: string;
-  updated_at: string;
-}
-
-interface AuthContextType {
-  user: User | null;
-  profile: Profile | null;
-  session: Session | null;
-  loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, name: string) => Promise<{ error: any }>;
-  signOut: () => Promise<void>;
-  isAdmin: boolean;
-}
-
-const AuthContext = createContext<AuthContextType>({
-  user: null,
-  profile: null,
-  session: null,
-  loading: true,
-  signIn: async () => ({ error: null }),
-  signUp: async () => ({ error: null }),
-  signOut: async () => {},
-  isAdmin: false,
-});
+import { Profile, AuthContextType } from '@/types/auth';
+import { AuthContext } from '@/contexts/AuthContext';
+import { fetchProfile } from '@/utils/profileService';
+import { createAuthService } from '@/utils/authService';
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -57,57 +31,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     timestamp: new Date().toISOString()
   });
 
-  const fetchProfile = async (userId: string): Promise<Profile | null> => {
-    try {
-      console.log('🔍 fetchProfile - Starting for user:', userId);
-      
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (error) {
-        console.error('❌ Erro ao buscar perfil:', error);
-        
-        // Se não encontrar o perfil, criar um perfil básico
-        if (error.code === 'PGRST116') {
-          console.log('⚠️ Profile not found, creating basic profile');
-          
-          const { data: newProfile, error: createError } = await supabase
-            .from('profiles')
-            .insert([{
-              id: userId,
-              email: user?.email || '',
-              name: user?.user_metadata?.name || 'Usuário',
-              role: 'user'
-            }])
-            .select()
-            .single();
-
-          if (createError) {
-            console.error('❌ Erro ao criar perfil:', createError);
-            return null;
-          }
-
-          console.log('✅ Profile created successfully:', newProfile);
-          return newProfile as Profile;
-        }
-        return null;
-      }
-
-      const profileData: Profile = {
-        ...data,
-        role: (data.role === 'admin' || data.role === 'user') ? data.role : 'user'
-      };
-
-      console.log('✅ fetchProfile - Profile fetched successfully:', profileData);
-      return profileData;
-    } catch (error) {
-      console.error('💥 Erro crítico ao buscar perfil:', error);
-      return null;
-    }
-  };
+  const authService = createAuthService(toast);
 
   useEffect(() => {
     console.log('🚀 AuthProvider - Setting up auth listener');
@@ -129,11 +53,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         if (session?.user) {
           console.log('👤 Auth state change - Fetching profile for user:', session.user.id);
-          // Use setTimeout to avoid blocking the auth state change
           setTimeout(async () => {
             if (mounted) {
               try {
-                const userProfile = await fetchProfile(session.user.id);
+                const userProfile = await fetchProfile(session.user.id, session.user);
                 if (mounted) {
                   setProfile(userProfile);
                   setLoading(false);
@@ -184,7 +107,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (session?.user) {
           console.log('👤 Initial session - Fetching profile for user:', session.user.id);
           try {
-            const userProfile = await fetchProfile(session.user.id);
+            const userProfile = await fetchProfile(session.user.id, session.user);
             if (mounted) {
               setProfile(userProfile);
             }
@@ -214,7 +137,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.warn('⏰ Auth initialization timeout - forcing loading to false');
         setLoading(false);
       }
-    }, 3000); // Reduzido para 3 segundos
+    }, 3000);
 
     initializeAuth();
 
@@ -224,101 +147,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       clearTimeout(timeoutId);
       subscription.unsubscribe();
     };
-  }, []); // Remover 'loading' das dependências para evitar loops
-
-  const signIn = async (email: string, password: string) => {
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        toast({
-          title: "Erro no login",
-          description: error.message,
-          variant: "destructive",
-        });
-        return { error };
-      }
-
-      toast({
-        title: "Login realizado",
-        description: "Bem-vindo ao sistema!",
-      });
-
-      return { error: null };
-    } catch (error: any) {
-      toast({
-        title: "Erro no login",
-        description: error.message,
-        variant: "destructive",
-      });
-      return { error };
-    }
-  };
-
-  const signUp = async (email: string, password: string, name: string) => {
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            name: name,
-          },
-          emailRedirectTo: `${window.location.origin}/`,
-        },
-      });
-
-      if (error) {
-        toast({
-          title: "Erro no cadastro",
-          description: error.message,
-          variant: "destructive",
-        });
-        return { error };
-      }
-
-      toast({
-        title: "Cadastro realizado",
-        description: "Conta criada com sucesso! Verifique seu email se necessário.",
-      });
-
-      return { error: null };
-    } catch (error: any) {
-      toast({
-        title: "Erro no cadastro",
-        description: error.message,
-        variant: "destructive",
-      });
-      return { error };
-    }
-  };
-
-  const signOut = async () => {
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        toast({
-          title: "Erro no logout",
-          description: error.message,
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Logout realizado",
-          description: "Até logo!",
-        });
-      }
-    } catch (error: any) {
-      toast({
-        title: "Erro no logout",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
+  }, []);
 
   const isAdmin = profile?.role === 'admin';
 
@@ -331,9 +160,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         profile,
         session,
         loading,
-        signIn,
-        signUp,
-        signOut,
+        signIn: authService.signIn,
+        signUp: authService.signUp,
+        signOut: authService.signOut,
         isAdmin,
       }}
     >
