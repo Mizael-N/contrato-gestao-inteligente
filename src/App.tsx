@@ -1,18 +1,18 @@
 
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
+import { useContracts } from '@/hooks/useContracts';
 import Navbar from '@/components/layout/Navbar';
 import Dashboard from '@/components/dashboard/Dashboard';
 import ContractManager from '@/components/contracts/ContractManager';
 import UserManagement from '@/components/users/UserManagement';
 import Settings from '@/components/settings/Settings';
 import Auth from '@/pages/Auth';
-import { Contract } from '@/types/contract';
 import { Loader2 } from 'lucide-react';
 
 const queryClient = new QueryClient();
@@ -20,26 +20,26 @@ const queryClient = new QueryClient();
 function ProtectedApp() {
   const { user, loading } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [contracts, setContracts] = useState<Contract[]>([]);
+  
+  // Usar o hook useContracts para gerenciar contratos
+  const { contracts, loading: contractsLoading } = useContracts();
 
   console.log('🏠 ProtectedApp - Render state:', { 
     hasUser: !!user, 
     loading, 
     activeTab,
+    contractsCount: contracts.length,
+    contractsLoading,
     timestamp: new Date().toISOString()
   });
-
-  const handleContractsChange = (newContracts: Contract[]) => {
-    setContracts(newContracts);
-  };
 
   const renderContent = () => {
     console.log('🎨 ProtectedApp - Rendering content for tab:', activeTab);
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard contracts={contracts} />;
+        return <Dashboard contracts={contracts} loading={contractsLoading} />;
       case 'contracts':
-        return <ContractManager contracts={contracts} onContractsChange={handleContractsChange} />;
+        return <ContractManager contracts={contracts} onContractsChange={() => {}} />;
       case 'suppliers':
         return <div className="p-8 text-center text-gray-500 dark:text-gray-400">Módulo de Fornecedores em desenvolvimento</div>;
       case 'users':
@@ -47,7 +47,7 @@ function ProtectedApp() {
       case 'settings':
         return <Settings />;
       default:
-        return <Dashboard contracts={contracts} />;
+        return <Dashboard contracts={contracts} loading={contractsLoading} />;
     }
   };
 
