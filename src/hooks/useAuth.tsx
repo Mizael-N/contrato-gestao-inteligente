@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -58,7 +57,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     timestamp: new Date().toISOString()
   });
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = async (userId: string): Promise<Profile | null> => {
     try {
       console.log('🔍 fetchProfile - Starting for user:', userId);
       
@@ -71,10 +70,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (error) {
         console.error('❌ Erro ao buscar perfil:', error);
         
-        // Se não encontrar o perfil, usuário pode continuar sem perfil
+        // Se não encontrar o perfil, criar um perfil básico
         if (error.code === 'PGRST116') {
-          console.log('⚠️ Profile not found, user can continue without profile');
-          return null;
+          console.log('⚠️ Profile not found, creating basic profile');
+          
+          // Tentar criar um perfil básico
+          const { data: newProfile, error: createError } = await supabase
+            .from('profiles')
+            .insert([{
+              id: userId,
+              email: user?.email || '',
+              name: user?.user_metadata?.name || 'Usuário',
+              role: 'user'
+            }])
+            .select()
+            .single();
+
+          if (createError) {
+            console.error('❌ Erro ao criar perfil:', createError);
+            return null;
+          }
+
+          console.log('✅ Profile created successfully:', newProfile);
+          return newProfile as Profile;
         }
         return null;
       }
@@ -189,13 +207,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     };
 
-    // Add a timeout to ensure loading never gets stuck
+    // Add a shorter timeout to ensure loading never gets stuck
     const timeoutId = setTimeout(() => {
       if (mounted && loading) {
         console.warn('⏰ Auth initialization timeout - forcing loading to false');
         setLoading(false);
       }
-    }, 10000); // 10 second timeout
+    }, 5000); // Reduced to 5 seconds
 
     initializeAuth();
 

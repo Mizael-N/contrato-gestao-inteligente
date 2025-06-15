@@ -1,13 +1,16 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Contract, Aditivo, Pagamento, Documento } from '@/types/contract';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 export const useContracts = () => {
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { user } = useAuth();
+
+  console.log('📋 useContracts - Hook initialized, user exists:', !!user);
 
   // Converter dados do banco para o formato da aplicação
   const mapDatabaseToContract = (dbContract: any, addendums: any[] = [], payments: any[] = [], documents: any[] = []): Contract => {
@@ -91,7 +94,14 @@ export const useContracts = () => {
 
   // Buscar todos os contratos
   const fetchContracts = async () => {
+    if (!user) {
+      console.log('🚫 useContracts - No user, skipping fetch');
+      setLoading(false);
+      return;
+    }
+
     try {
+      console.log('📥 useContracts - Starting to fetch contracts');
       setLoading(true);
       
       // Buscar contratos
@@ -100,7 +110,12 @@ export const useContracts = () => {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (contractsError) throw contractsError;
+      if (contractsError) {
+        console.error('❌ Error fetching contracts:', contractsError);
+        throw contractsError;
+      }
+
+      console.log('📊 useContracts - Found contracts:', contractsData?.length || 0);
 
       // Buscar dados relacionados para cada contrato
       const contractsWithRelations = await Promise.all(
@@ -120,16 +135,19 @@ export const useContracts = () => {
         })
       );
 
+      console.log('✅ useContracts - Contracts loaded successfully:', contractsWithRelations.length);
       setContracts(contractsWithRelations);
     } catch (error) {
-      console.error('Erro ao buscar contratos:', error);
+      console.error('💥 Erro ao buscar contratos:', error);
       toast({
         title: 'Erro',
         description: 'Não foi possível carregar os contratos.',
         variant: 'destructive'
       });
+      setContracts([]); // Set empty array on error
     } finally {
       setLoading(false);
+      console.log('🏁 useContracts - Fetch completed, loading set to false');
     }
   };
 
@@ -176,7 +194,7 @@ export const useContracts = () => {
 
       if (error) throw error;
 
-      await fetchContracts(); // Recarregar para pegar dados atualizados com relações
+      await fetchContracts();
       
       toast({
         title: 'Sucesso',
@@ -243,7 +261,6 @@ export const useContracts = () => {
 
       if (error) throw error;
 
-      // Atualizar valores do contrato principal se necessário
       if (addendumData.tipo === 'valor' && addendumData.valorNovo) {
         await updateContract(contractId, { valor: addendumData.valorNovo });
       }
@@ -251,7 +268,7 @@ export const useContracts = () => {
         await updateContract(contractId, { prazoExecucao: addendumData.prazoNovo });
       }
 
-      await fetchContracts(); // Recarregar contratos
+      await fetchContracts();
       
       toast({
         title: 'Sucesso',
@@ -271,8 +288,14 @@ export const useContracts = () => {
   };
 
   useEffect(() => {
-    fetchContracts();
-  }, []);
+    console.log('🔄 useContracts - Effect triggered, user exists:', !!user);
+    if (user) {
+      fetchContracts();
+    } else {
+      setLoading(false);
+      setContracts([]);
+    }
+  }, [user]);
 
   return {
     contracts,
