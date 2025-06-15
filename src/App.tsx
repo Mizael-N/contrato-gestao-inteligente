@@ -22,13 +22,19 @@ function ProtectedApp() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [contracts, setContracts] = useState<Contract[]>([]);
 
-  console.log('ProtectedApp - user:', user, 'loading:', loading);
+  console.log('🏠 ProtectedApp - Render state:', { 
+    hasUser: !!user, 
+    loading, 
+    activeTab,
+    timestamp: new Date().toISOString()
+  });
 
   const handleContractsChange = (newContracts: Contract[]) => {
     setContracts(newContracts);
   };
 
   const renderContent = () => {
+    console.log('🎨 ProtectedApp - Rendering content for tab:', activeTab);
     switch (activeTab) {
       case 'dashboard':
         return <Dashboard contracts={contracts} />;
@@ -46,23 +52,24 @@ function ProtectedApp() {
   };
 
   if (loading) {
-    console.log('ProtectedApp - Showing loading screen');
+    console.log('⏳ ProtectedApp - Showing loading screen');
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600 dark:text-gray-300">Carregando...</p>
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-500" />
+          <p className="text-gray-600 dark:text-gray-300 text-lg">Carregando sistema...</p>
+          <p className="text-gray-400 dark:text-gray-500 text-sm mt-2">Aguarde um momento</p>
         </div>
       </div>
     );
   }
 
   if (!user) {
-    console.log('ProtectedApp - No user, redirecting to auth');
+    console.log('🚪 ProtectedApp - No user, redirecting to auth');
     return <Navigate to="/auth" replace />;
   }
 
-  console.log('ProtectedApp - Rendering main app');
+  console.log('✅ ProtectedApp - Rendering main app interface');
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Navbar activeTab={activeTab} onTabChange={setActiveTab} />
@@ -74,7 +81,7 @@ function ProtectedApp() {
 }
 
 const App = () => {
-  console.log('App component initializing');
+  console.log('🎬 App component initializing at:', new Date().toISOString());
   
   return (
     <QueryClientProvider client={queryClient}>
