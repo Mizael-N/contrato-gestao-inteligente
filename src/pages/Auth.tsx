@@ -22,8 +22,9 @@ export default function Auth() {
   const [registerPassword, setRegisterPassword] = useState('');
   const [registerName, setRegisterName] = useState('');
 
-  // If user is already logged in, redirect to dashboard
+  // Se o usuário já está logado, redirecionar para o dashboard
   if (user && !loading) {
+    console.log('👤 Auth - Usuario já logado, redirecionando para dashboard');
     return <Navigate to="/" replace />;
   }
 
@@ -31,10 +32,12 @@ export default function Auth() {
     e.preventDefault();
     setIsLoading(true);
     
+    console.log('🔐 Auth - Tentando fazer login');
     const { error } = await signIn(loginEmail, loginPassword);
     
     if (!error) {
-      // Redirect will happen automatically via AuthContext
+      console.log('✅ Auth - Login bem-sucedido, redirecionando');
+      // O redirecionamento acontecerá automaticamente via AuthContext
     }
     
     setIsLoading(false);
@@ -44,10 +47,12 @@ export default function Auth() {
     e.preventDefault();
     setIsLoading(true);
     
+    console.log('📝 Auth - Tentando fazer cadastro');
     const { error } = await signUp(registerEmail, registerPassword, registerName);
     
     if (!error) {
-      // Clear form
+      console.log('✅ Auth - Cadastro bem-sucedido');
+      // Limpar formulário
       setRegisterEmail('');
       setRegisterPassword('');
       setRegisterName('');

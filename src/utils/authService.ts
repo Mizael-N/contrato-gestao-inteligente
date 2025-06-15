@@ -100,9 +100,9 @@ export const createAuthService = (toast: ReturnType<typeof useToast>['toast']) =
       if (error) {
         console.error('❌ authService - Erro no logout:', error);
         toast({
-          title: "Erro no logout",
-          description: error.message,
-          variant: "destructive",
+          title: "Aviso",
+          description: "Você foi desconectado do sistema.",
+          variant: "default",
         });
       } else {
         console.log('✅ authService - Logout realizado com sucesso');
@@ -113,22 +113,18 @@ export const createAuthService = (toast: ReturnType<typeof useToast>['toast']) =
       }
       
       // Sempre redirecionar para a tela de login, independentemente do erro
-      setTimeout(() => {
-        window.location.href = '/auth';
-      }, 1000);
+      window.location.href = '/auth';
       
     } catch (error: any) {
       console.error('💥 authService - Erro crítico no logout:', error);
       toast({
-        title: "Erro no logout",
-        description: error.message,
-        variant: "destructive",
+        title: "Aviso",
+        description: "Você foi desconectado do sistema.",
+        variant: "default",
       });
       
       // Mesmo com erro, redirecionar para login
-      setTimeout(() => {
-        window.location.href = '/auth';
-      }, 1000);
+      window.location.href = '/auth';
     }
   };
 

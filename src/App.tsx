@@ -32,6 +32,25 @@ function ProtectedApp() {
     timestamp: new Date().toISOString()
   });
 
+  if (loading) {
+    console.log('⏳ ProtectedApp - Showing loading screen');
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-500" />
+          <p className="text-gray-600 dark:text-gray-300 text-lg">Carregando sistema...</p>
+          <p className="text-gray-400 dark:text-gray-500 text-sm mt-2">Aguarde um momento</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Se não há usuário autenticado, redirecionar para login
+  if (!user) {
+    console.log('🚪 ProtectedApp - No user, redirecting to auth');
+    return <Navigate to="/auth" replace />;
+  }
+
   const renderContent = () => {
     console.log('🎨 ProtectedApp - Rendering content for tab:', activeTab);
     switch (activeTab) {
@@ -49,24 +68,6 @@ function ProtectedApp() {
         return <Dashboard contracts={contractsHook.contracts} loading={contractsHook.loading} />;
     }
   };
-
-  if (loading) {
-    console.log('⏳ ProtectedApp - Showing loading screen');
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-500" />
-          <p className="text-gray-600 dark:text-gray-300 text-lg">Carregando sistema...</p>
-          <p className="text-gray-400 dark:text-gray-500 text-sm mt-2">Aguarde um momento</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    console.log('🚪 ProtectedApp - No user, redirecting to auth');
-    return <Navigate to="/auth" replace />;
-  }
 
   console.log('✅ ProtectedApp - Rendering main app interface');
   return (
