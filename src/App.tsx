@@ -89,7 +89,8 @@ const App = () => {
           <Router>
             <Routes>
               <Route path="/auth" element={<Auth />} />
-              <Route path="/*" element={<ProtectedApp />} />
+              <Route path="/" element={<ProtectedApp />} />
+              <Route path="*" element={<Navigate to="/auth" replace />} />
             </Routes>
             <Toaster />
             <Sonner />

@@ -1,19 +1,40 @@
 
 export const cleanupAuthState = () => {
-  // Remove standard auth tokens
-  localStorage.removeItem('supabase.auth.token');
+  console.log('🧹 Limpando estado de autenticação');
   
-  // Remove all Supabase auth keys from localStorage
-  Object.keys(localStorage).forEach((key) => {
-    if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+  try {
+    // Limpar localStorage
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.startsWith('supabase.auth.') || key.includes('sb-'))) {
+        keysToRemove.push(key);
+      }
+    }
+    
+    keysToRemove.forEach(key => {
       localStorage.removeItem(key);
+      console.log('🗑️ Removido do localStorage:', key);
+    });
+    
+    // Limpar sessionStorage se existir
+    if (typeof sessionStorage !== 'undefined') {
+      const sessionKeysToRemove = [];
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i);
+        if (key && (key.startsWith('supabase.auth.') || key.includes('sb-'))) {
+          sessionKeysToRemove.push(key);
+        }
+      }
+      
+      sessionKeysToRemove.forEach(key => {
+        sessionStorage.removeItem(key);
+        console.log('🗑️ Removido do sessionStorage:', key);
+      });
     }
-  });
-  
-  // Remove from sessionStorage if in use
-  Object.keys(sessionStorage || {}).forEach((key) => {
-    if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-      sessionStorage.removeItem(key);
-    }
-  });
+    
+    console.log('✅ Limpeza de estado concluída');
+  } catch (error) {
+    console.error('❌ Erro durante limpeza de estado:', error);
+  }
 };

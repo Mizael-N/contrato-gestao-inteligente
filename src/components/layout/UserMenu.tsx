@@ -20,6 +20,11 @@ export default function UserMenu() {
       .slice(0, 2);
   };
 
+  const handleSignOut = async () => {
+    console.log('🚪 UserMenu - Iniciando logout');
+    await signOut();
+  };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -57,7 +62,7 @@ export default function UserMenu() {
           <span>Configurações</span>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={signOut}>
+        <DropdownMenuItem onClick={handleSignOut} className="text-red-600 focus:text-red-600 focus:bg-red-50">
           <LogOut className="mr-2 h-4 w-4" />
           <span>Sair</span>
         </DropdownMenuItem>
