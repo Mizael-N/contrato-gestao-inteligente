@@ -61,8 +61,8 @@ export default function ContractGrid({ contracts, onEdit, onDelete, onView, onNe
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Gestão de Contratos</h1>
-          <p className="text-gray-600">{filteredContracts.length} contratos encontrados</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Gestão de Contratos</h1>
+          <p className="text-gray-600 dark:text-gray-300">{filteredContracts.length} contratos encontrados</p>
         </div>
         <div className="flex gap-2">
           <Button onClick={onImport} variant="outline" size="sm">
@@ -81,7 +81,7 @@ export default function ContractGrid({ contracts, onEdit, onDelete, onView, onNe
         <CardContent className="pt-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
               <Input
                 placeholder="Buscar contratos..."
                 value={searchTerm}
@@ -136,7 +136,7 @@ export default function ContractGrid({ contracts, onEdit, onDelete, onView, onNe
             <CardHeader className="pb-2">
               <div className="flex justify-between items-start">
                 <div>
-                  <CardTitle className="text-lg">{contract.numero}</CardTitle>
+                  <CardTitle className="text-lg text-gray-900 dark:text-white">{contract.numero}</CardTitle>
                   {getStatusBadge(contract.status)}
                 </div>
                 <div className="flex gap-1">
@@ -153,27 +153,27 @@ export default function ContractGrid({ contracts, onEdit, onDelete, onView, onNe
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              <p className="text-sm text-gray-600 line-clamp-2">{contract.objeto}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2">{contract.objeto}</p>
               
               <div className="space-y-2">
                 <div className="flex items-center text-sm">
-                  <Building className="h-4 w-4 mr-2 text-gray-400" />
-                  <span className="text-gray-600 truncate">{contract.contratada}</span>
+                  <Building className="h-4 w-4 mr-2 text-gray-400 dark:text-gray-500" />
+                  <span className="text-gray-600 dark:text-gray-300 truncate">{contract.contratada}</span>
                 </div>
                 
                 <div className="flex items-center text-sm">
-                  <DollarSign className="h-4 w-4 mr-2 text-gray-400" />
-                  <span className="font-medium text-green-600">{formatCurrency(contract.valor)}</span>
+                  <DollarSign className="h-4 w-4 mr-2 text-gray-400 dark:text-gray-500" />
+                  <span className="font-medium text-green-600 dark:text-green-400">{formatCurrency(contract.valor)}</span>
                 </div>
                 
                 <div className="flex items-center text-sm">
-                  <Calendar className="h-4 w-4 mr-2 text-gray-400" />
-                  <span className="text-gray-600">{formatDate(contract.dataAssinatura)}</span>
+                  <Calendar className="h-4 w-4 mr-2 text-gray-400 dark:text-gray-500" />
+                  <span className="text-gray-600 dark:text-gray-300">{formatDate(contract.dataAssinatura)}</span>
                 </div>
               </div>
 
-              <div className="pt-2 border-t">
-                <div className="flex justify-between text-xs text-gray-500">
+              <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+                <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
                   <span className="capitalize">{contract.modalidade.replace('_', ' ')}</span>
                   <span>{contract.aditivos.length} aditivos</span>
                 </div>
@@ -186,10 +186,10 @@ export default function ContractGrid({ contracts, onEdit, onDelete, onView, onNe
       {filteredContracts.length === 0 && (
         <Card>
           <CardContent className="text-center py-12">
-            <div className="text-gray-400 mb-4">
+            <div className="text-gray-400 dark:text-gray-500 mb-4">
               <Search className="h-12 w-12 mx-auto mb-4" />
-              <p className="text-lg font-medium">Nenhum contrato encontrado</p>
-              <p className="text-sm">Tente ajustar os filtros ou criar um novo contrato</p>
+              <p className="text-lg font-medium text-gray-900 dark:text-white">Nenhum contrato encontrado</p>
+              <p className="text-sm text-gray-600 dark:text-gray-300">Tente ajustar os filtros ou criar um novo contrato</p>
             </div>
             <Button onClick={onNew}>
               <Plus className="h-4 w-4 mr-2" />
