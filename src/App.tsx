@@ -19,7 +19,7 @@ import SupplierManager from '@/components/suppliers/SupplierManager';
 const queryClient = new QueryClient();
 
 function ProtectedApp() {
-  const { user, loading } = useAuth();
+  const { user, loading, isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   
   const contractsHook = useContracts();
@@ -62,7 +62,7 @@ function ProtectedApp() {
       case 'suppliers':
         return <SupplierManager />;
       case 'users':
-        return <UserManagement />;
+        return isAdmin ? <UserManagement /> : <Dashboard contracts={contractsHook.contracts} loading={contractsHook.loading} />;
       case 'settings':
         return <Settings />;
       default:

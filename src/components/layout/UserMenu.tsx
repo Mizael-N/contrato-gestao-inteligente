@@ -3,10 +3,10 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/useAuth';
-import { User, Settings } from 'lucide-react';
+import { User, Settings, LogOut } from 'lucide-react';
 
 export default function UserMenu() {
-  const { profile, isAdmin } = useAuth();
+  const { profile, isAdmin, signOut } = useAuth();
 
   if (!profile) return null;
 
@@ -41,7 +41,7 @@ export default function UserMenu() {
               {profile.email}
             </p>
             {isAdmin && (
-              <span className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded-full w-fit">
+              <span className="text-xs bg-blue-600 text-white px-2 py-1 rounded-full w-fit font-medium">
                 Administrador
               </span>
             )}
@@ -55,6 +55,11 @@ export default function UserMenu() {
         <DropdownMenuItem>
           <Settings className="mr-2 h-4 w-4" />
           <span>Configurações</span>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={signOut} className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950">
+          <LogOut className="mr-2 h-4 w-4" />
+          <span>Sair</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
