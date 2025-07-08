@@ -27,10 +27,21 @@ export const createAuthService = (toast: ReturnType<typeof useToast>['toast']) =
       }
 
       console.log('✅ authService - Login realizado com sucesso');
-      toast({
-        title: "Login realizado",
-        description: "Bem-vindo ao sistema!",
-      });
+      
+      // Verificar se o usuário é admin para mostrar mensagem personalizada
+      const isAdminUser = email === 'mizaelneto20@gmail.com';
+      
+      if (isAdminUser) {
+        toast({
+          title: "Login de Administrador",
+          description: "Bem-vindo ao painel administrativo! Você tem acesso completo ao sistema.",
+        });
+      } else {
+        toast({
+          title: "Login realizado",
+          description: "Bem-vindo ao sistema!",
+        });
+      }
 
       return { error: null };
     } catch (error: any) {

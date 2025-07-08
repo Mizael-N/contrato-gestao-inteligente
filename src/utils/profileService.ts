@@ -20,13 +20,16 @@ export const fetchProfile = async (userId: string, user?: User): Promise<Profile
       if (error.code === 'PGRST116') {
         console.log('⚠️ Profile not found, creating basic profile');
         
+        // Verificar se é o usuário admin específico
+        const isAdminUser = user?.email === 'mizaelneto20@gmail.com';
+        
         const { data: newProfile, error: createError } = await supabase
           .from('profiles')
           .insert([{
             id: userId,
             email: user?.email || '',
             name: user?.user_metadata?.name || 'Usuário',
-            role: 'user'
+            role: isAdminUser ? 'admin' : 'user'
           }])
           .select()
           .single();
@@ -40,6 +43,22 @@ export const fetchProfile = async (userId: string, user?: User): Promise<Profile
         return newProfile as Profile;
       }
       return null;
+    }
+
+    // Verificar se é o usuário admin específico e forçar role admin se necessário
+    if (user?.email === 'mizaelneto20@gmail.com' && data.role !== 'admin') {
+      console.log('🔧 Updating admin role for mizaelneto20@gmail.com');
+      
+      const { data: updatedProfile, error: updateError } = await supabase
+        .from('profiles')
+        .update({ role: 'admin' })
+        .eq('id', userId)
+        .select()
+        .single();
+
+      if (!updateError && updatedProfile) {
+        data.role = 'admin';
+      }
     }
 
     const profileData: Profile = {

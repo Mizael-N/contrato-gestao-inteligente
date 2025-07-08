@@ -1,6 +1,6 @@
 
 import { Button } from '@/components/ui/button';
-import { FileText, Home, Settings, Users } from 'lucide-react';
+import { FileText, Home, Settings, Users, Shield } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import UserMenu from './UserMenu';
 import ThemeToggle from './ThemeToggle';
@@ -13,15 +13,19 @@ interface NavbarProps {
 export default function Navbar({ activeTab, onTabChange }: NavbarProps) {
   const { user, isAdmin } = useAuth();
 
+  console.log('🔍 Navbar - User info:', { hasUser: !!user, isAdmin, email: user?.email });
+
   if (!user) return null;
 
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
     { id: 'contracts', label: 'Contratos', icon: FileText },
     { id: 'suppliers', label: 'Fornecedores', icon: Users },
-    ...(isAdmin ? [{ id: 'users', label: 'Usuários', icon: Users }] : []),
+    ...(isAdmin ? [{ id: 'users', label: 'Usuários', icon: Shield }] : []),
     { id: 'settings', label: 'Configurações', icon: Settings },
   ];
+
+  console.log('🎯 Navbar - Tabs available:', tabs.map(t => t.id));
 
   return (
     <nav className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
@@ -29,7 +33,14 @@ export default function Navbar({ activeTab, onTabChange }: NavbarProps) {
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">SGL</h1>
+              <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+                SGL
+                {isAdmin && (
+                  <span className="ml-2 text-xs bg-blue-600 text-white px-2 py-1 rounded-full">
+                    ADMIN
+                  </span>
+                )}
+              </h1>
             </div>
             <div className="hidden md:ml-6 md:flex md:space-x-8">
               {tabs.map((tab) => {
