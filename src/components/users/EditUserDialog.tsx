@@ -8,80 +8,104 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Loader2, UserPlus } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { Loader2, Save } from 'lucide-react';
 
-const createAdminUserSchema = z.object({
-  email: z.string().email('Email inválido'),
-  password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
+const editUserSchema = z.object({
   name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
+  email: z.string().email('Email inválido'),
 });
 
-type CreateAdminUserForm = z.infer<typeof createAdminUserSchema>;
+type EditUserForm = z.infer<typeof editUserSchema>;
 
-interface CreateAdminUserDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onUserCreated: () => void;
+interface User {
+  id: string;
+  email: string;
+  name: string | null;
+  role: 'admin' | 'user';
+  created_at: string;
 }
 
-export default function CreateAdminUserDialog({ 
+interface EditUserDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  user: User | null;
+  onUserUpdated: () => void;
+}
+
+export default function EditUserDialog({ 
   open, 
   onOpenChange, 
-  onUserCreated 
-}: CreateAdminUserDialogProps) {
-  const [isCreating, setIsCreating] = useState(false);
+  user,
+  onUserUpdated 
+}: EditUserDialogProps) {
+  const [isUpdating, setIsUpdating] = useState(false);
   const { toast } = useToast();
 
-  const form = useForm<CreateAdminUserForm>({
-    resolver: zodResolver(createAdminUserSchema),
+  const form = useForm<EditUserForm>({
+    resolver: zodResolver(editUserSchema),
     defaultValues: {
-      email: '',
-      password: '',
-      name: '',
+      name: user?.name || '',
+      email: user?.email || '',
     },
   });
 
-  const handleCreateAdminUser = async (values: CreateAdminUserForm) => {
-    setIsCreating(true);
+  // Update form when user changes
+  useState(() => {
+    if (user) {
+      form.reset({
+        name: user.name || '',
+        email: user.email || '',
+      });
+    }
+  });
+
+  const handleUpdateUser = async (values: EditUserForm) => {
+    if (!user) return;
+    
+    setIsUpdating(true);
     
     try {
-      console.log('🔧 Criando usuário admin:', values.email);
+      console.log('🔧 Updating user:', user.id, values);
       
-      // Call edge function to create admin user
-      const { error } = await supabase.functions.invoke('create-admin-user', {
-        body: values
-      });
+      // Update user profile (this will work with current RLS policies)
+      const { supabase } = await import('@/integrations/supabase/client');
+      
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          name: values.name,
+          email: values.email,
+        })
+        .eq('id', user.id);
 
       if (error) {
-        console.error('❌ Erro ao criar usuário:', error);
+        console.error('❌ Erro ao atualizar usuário:', error);
         toast({
-          title: "Erro ao criar usuário",
+          title: "Erro ao atualizar usuário",
           description: error.message,
           variant: "destructive",
         });
         return;
       }
 
-      console.log('✅ Usuário admin criado com sucesso');
+      console.log('✅ Usuário atualizado com sucesso');
       toast({
         title: "Sucesso",
-        description: `Usuário admin ${values.name} criado com sucesso!`,
+        description: `Usuário ${values.name} atualizado com sucesso!`,
       });
 
-      form.reset();
-      onUserCreated();
+      onUserUpdated();
       onOpenChange(false);
 
     } catch (error: any) {
-      console.error('💥 Erro crítico ao criar usuário admin:', error);
+      console.error('💥 Erro crítico ao atualizar usuário:', error);
       toast({
         title: "Erro crítico",
-        description: error.message || "Erro inesperado ao criar usuário",
+        description: error.message || "Erro inesperado ao atualizar usuário",
         variant: "destructive",
       });
     } finally {
-      setIsCreating(false);
+      setIsUpdating(false);
     }
   };
 
@@ -90,13 +114,13 @@ export default function CreateAdminUserDialog({
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
-            <UserPlus className="h-5 w-5" />
-            <span>Criar Usuário Administrador</span>
+            <Save className="h-5 w-5" />
+            <span>Editar Usuário</span>
           </DialogTitle>
         </DialogHeader>
         
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleCreateAdminUser)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(handleUpdateUser)} className="space-y-4">
             <FormField
               control={form.control}
               name="name"
@@ -106,7 +130,7 @@ export default function CreateAdminUserDialog({
                   <FormControl>
                     <Input 
                       placeholder="Nome completo" 
-                      disabled={isCreating}
+                      disabled={isUpdating}
                       {...field} 
                     />
                   </FormControl>
@@ -124,27 +148,8 @@ export default function CreateAdminUserDialog({
                   <FormControl>
                     <Input 
                       type="email" 
-                      placeholder="admin@exemplo.com" 
-                      disabled={isCreating}
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Senha</FormLabel>
-                  <FormControl>
-                    <Input 
-                      type="password" 
-                      placeholder="Senha (mín. 6 caracteres)" 
-                      disabled={isCreating}
+                      placeholder="usuario@exemplo.com" 
+                      disabled={isUpdating}
                       {...field} 
                     />
                   </FormControl>
@@ -158,20 +163,20 @@ export default function CreateAdminUserDialog({
                 type="button" 
                 variant="outline" 
                 onClick={() => onOpenChange(false)}
-                disabled={isCreating}
+                disabled={isUpdating}
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isCreating}>
-                {isCreating ? (
+              <Button type="submit" disabled={isUpdating}>
+                {isUpdating ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Criando...
+                    Salvando...
                   </>
                 ) : (
                   <>
-                    <UserPlus className="mr-2 h-4 w-4" />
-                    Criar Admin
+                    <Save className="mr-2 h-4 w-4" />
+                    Salvar
                   </>
                 )}
               </Button>
