@@ -28,6 +28,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     profile: !!profile, 
     session: !!session, 
     loading,
+    profileRole: profile?.role,
+    userEmail: user?.email,
     timestamp: new Date().toISOString()
   });
 
@@ -52,12 +54,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setUser(session?.user ?? null);
 
         if (session?.user) {
-          console.log('👤 Auth state change - Fetching profile for user:', session.user.id);
+          console.log('👤 Auth state change - Fetching profile for user:', session.user.id, session.user.email);
+          
+          // Usar setTimeout para evitar deadlocks
           setTimeout(async () => {
             if (mounted) {
               try {
                 const userProfile = await fetchProfile(session.user.id, session.user);
                 if (mounted) {
+                  console.log('🎯 Profile fetched from auth state change:', userProfile);
                   setProfile(userProfile);
                   setLoading(false);
                 }
@@ -105,10 +110,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setUser(session?.user ?? null);
 
         if (session?.user) {
-          console.log('👤 Initial session - Fetching profile for user:', session.user.id);
+          console.log('👤 Initial session - Fetching profile for user:', session.user.id, session.user.email);
           try {
             const userProfile = await fetchProfile(session.user.id, session.user);
             if (mounted) {
+              console.log('🎯 Profile fetched from initial check:', userProfile);
               setProfile(userProfile);
             }
           } catch (error) {
@@ -149,9 +155,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, []);
 
-  const isAdmin = profile?.role === 'admin';
+  // Calcular isAdmin com fallback para mizaelneto20@gmail.com
+  const isAdmin = profile?.role === 'admin' || user?.email === 'mizaelneto20@gmail.com';
 
-  console.log('🎯 AuthProvider - Rendering with isAdmin:', isAdmin, 'loading:', loading);
+  console.log('🎯 AuthProvider - Final isAdmin calculation:', {
+    profileRole: profile?.role,
+    userEmail: user?.email,
+    isAdmin,
+    loading
+  });
 
   return (
     <AuthContext.Provider

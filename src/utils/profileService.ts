@@ -5,7 +5,7 @@ import { User } from '@supabase/supabase-js';
 
 export const fetchProfile = async (userId: string, user?: User): Promise<Profile | null> => {
   try {
-    console.log('🔍 fetchProfile - Starting for user:', userId);
+    console.log('🔍 fetchProfile - Starting for user:', userId, 'Email:', user?.email);
     
     const { data, error } = await supabase
       .from('profiles')
@@ -45,19 +45,30 @@ export const fetchProfile = async (userId: string, user?: User): Promise<Profile
       return null;
     }
 
-    // Verificar se é o usuário admin específico e forçar role admin se necessário
-    if (user?.email === 'mizaelneto20@gmail.com' && data.role !== 'admin') {
-      console.log('🔧 Updating admin role for mizaelneto20@gmail.com');
+    // SEMPRE verificar se é o usuário admin específico e forçar role admin se necessário
+    if (user?.email === 'mizaelneto20@gmail.com') {
+      console.log('🔧 Checking admin role for mizaelneto20@gmail.com, current role:', data.role);
       
-      const { data: updatedProfile, error: updateError } = await supabase
-        .from('profiles')
-        .update({ role: 'admin' })
-        .eq('id', userId)
-        .select()
-        .single();
+      if (data.role !== 'admin') {
+        console.log('🔧 Updating admin role for mizaelneto20@gmail.com');
+        
+        const { data: updatedProfile, error: updateError } = await supabase
+          .from('profiles')
+          .update({ role: 'admin' })
+          .eq('id', userId)
+          .select()
+          .single();
 
-      if (!updateError && updatedProfile) {
-        data.role = 'admin';
+        if (!updateError && updatedProfile) {
+          console.log('✅ Admin role updated successfully');
+          data.role = 'admin';
+        } else {
+          console.error('❌ Failed to update admin role:', updateError);
+          // Forçar admin mesmo se a atualização falhar
+          data.role = 'admin';
+        }
+      } else {
+        console.log('✅ Admin role already correct');
       }
     }
 
@@ -66,7 +77,13 @@ export const fetchProfile = async (userId: string, user?: User): Promise<Profile
       role: (data.role === 'admin' || data.role === 'user') ? data.role : 'user'
     };
 
-    console.log('✅ fetchProfile - Profile fetched successfully:', profileData);
+    console.log('✅ fetchProfile - Final profile data:', {
+      id: profileData.id,
+      email: profileData.email,
+      role: profileData.role,
+      isAdmin: profileData.role === 'admin'
+    });
+
     return profileData;
   } catch (error) {
     console.error('💥 Erro crítico ao buscar perfil:', error);

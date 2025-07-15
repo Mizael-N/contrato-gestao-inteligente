@@ -13,7 +13,12 @@ interface NavbarProps {
 export default function Navbar({ activeTab, onTabChange }: NavbarProps) {
   const { user, isAdmin } = useAuth();
 
-  console.log('🔍 Navbar - User info:', { hasUser: !!user, isAdmin, email: user?.email });
+  console.log('🔍 Navbar - User info:', { 
+    hasUser: !!user, 
+    isAdmin, 
+    email: user?.email,
+    timestamp: new Date().toISOString()
+  });
 
   if (!user) return null;
 
@@ -25,7 +30,7 @@ export default function Navbar({ activeTab, onTabChange }: NavbarProps) {
     { id: 'settings', label: 'Configurações', icon: Settings },
   ];
 
-  console.log('🎯 Navbar - Tabs available:', tabs.map(t => t.id));
+  console.log('🎯 Navbar - Tabs available:', tabs.map(t => t.id), 'isAdmin:', isAdmin);
 
   return (
     <nav className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
@@ -33,10 +38,10 @@ export default function Navbar({ activeTab, onTabChange }: NavbarProps) {
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+              <h1 className="text-xl font-bold text-gray-900 dark:text-white flex items-center">
                 SGL
                 {isAdmin && (
-                  <span className="ml-2 text-xs bg-blue-600 text-white px-2 py-1 rounded-full">
+                  <span className="ml-2 text-xs bg-blue-600 text-white px-2 py-1 rounded-full font-medium">
                     ADMIN
                   </span>
                 )}
