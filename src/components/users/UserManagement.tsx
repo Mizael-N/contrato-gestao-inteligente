@@ -1,21 +1,28 @@
 
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useUsers } from '@/hooks/useUsers';
 import { useAuth } from '@/hooks/useAuth';
-import { Shield, ShieldCheck, Loader2 } from 'lucide-react';
+import { Shield, ShieldCheck, Loader2, UserPlus } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import CreateAdminUserDialog from './CreateAdminUserDialog';
 
 export default function UserManagement() {
-  const { users, loading, updateUserRole } = useUsers();
+  const { users, loading, updateUserRole, refetch } = useUsers();
   const { profile } = useAuth();
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   const handleRoleChange = async (userId: string, currentRole: 'admin' | 'user') => {
     const newRole = currentRole === 'admin' ? 'user' : 'admin';
     await updateUserRole(userId, newRole);
+  };
+
+  const handleUserCreated = () => {
+    refetch();
   };
 
   if (loading) {
@@ -31,13 +38,21 @@ export default function UserManagement() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Shield className="h-5 w-5" />
-            <span>Gerenciamento de Usuários</span>
-          </CardTitle>
-          <CardDescription>
-            Gerencie roles e permissões dos usuários do sistema
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center space-x-2">
+                <Shield className="h-5 w-5" />
+                <span>Gerenciamento de Usuários</span>
+              </CardTitle>
+              <CardDescription>
+                Gerencie roles e permissões dos usuários do sistema
+              </CardDescription>
+            </div>
+            <Button onClick={() => setIsCreateDialogOpen(true)}>
+              <UserPlus className="mr-2 h-4 w-4" />
+              Adicionar Admin
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="rounded-md border">
@@ -102,6 +117,12 @@ export default function UserManagement() {
           )}
         </CardContent>
       </Card>
+
+      <CreateAdminUserDialog
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+        onUserCreated={handleUserCreated}
+      />
     </div>
   );
 }
