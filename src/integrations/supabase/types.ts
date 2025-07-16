@@ -277,8 +277,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      clear_all_system_data: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       is_admin: {
-        Args: { user_id: string }
+        Args: { user_id?: string }
         Returns: boolean
       }
     }

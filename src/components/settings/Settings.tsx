@@ -28,11 +28,12 @@ export default function Settings() {
 
     setIsClearing(true);
     try {
-      // Deletar dados em ordem devido às dependências de chave estrangeira
-      await supabase.from('addendums').delete().neq('id', '');
-      await supabase.from('payments').delete().neq('id', '');
-      await supabase.from('documents').delete().neq('id', '');
-      await supabase.from('contracts').delete().neq('id', '');
+      // Usar a função do banco de dados que tem SECURITY DEFINER
+      const { data, error } = await supabase.rpc('clear_all_system_data');
+      
+      if (error) {
+        throw error;
+      }
       
       toast({
         title: "Dados removidos",
