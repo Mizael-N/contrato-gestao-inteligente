@@ -3,18 +3,22 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Input } from '@/components/ui/input';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { LogOut } from 'lucide-react';
+import { LogOut, Eye, EyeOff } from 'lucide-react';
 
 export default function Settings() {
   const { theme, toggleTheme } = useTheme();
-  const { isAdmin, signOut } = useAuth();
+  const { isAdmin, signOut, user } = useAuth();
   const { toast } = useToast();
   const [isClearing, setIsClearing] = useState(false);
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [isValidatingPassword, setIsValidatingPassword] = useState(false);
 
   const handleClearData = async () => {
     if (!isAdmin) {
@@ -26,8 +30,34 @@ export default function Settings() {
       return;
     }
 
-    setIsClearing(true);
+    if (!password.trim()) {
+      toast({
+        title: "Senha obrigatória",
+        description: "Digite sua senha para confirmar esta ação.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsValidatingPassword(true);
+    
     try {
+      // Primeiro validar a senha do usuário
+      if (!user?.email) {
+        throw new Error("Email do usuário não encontrado");
+      }
+
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: password,
+      });
+
+      if (authError) {
+        throw new Error("Senha incorreta");
+      }
+
+      setIsClearing(true);
+      
       // Usar a função do banco de dados que tem SECURITY DEFINER
       const { data, error } = await supabase.rpc('clear_all_system_data');
       
@@ -39,15 +69,19 @@ export default function Settings() {
         title: "Dados removidos",
         description: "Todos os dados do sistema foram removidos com sucesso.",
       });
+
+      setPassword(''); // Limpar senha após sucesso
+      
     } catch (error) {
       console.error('Erro ao limpar dados:', error);
       toast({
         title: "Erro",
-        description: "Erro ao remover os dados do sistema.",
+        description: error instanceof Error ? error.message : "Erro ao remover os dados do sistema.",
         variant: "destructive",
       });
     } finally {
       setIsClearing(false);
+      setIsValidatingPassword(false);
     }
   };
 
@@ -164,13 +198,13 @@ export default function Settings() {
                 </div>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="destructive" disabled={isClearing}>
+                    <Button variant="destructive" disabled={isClearing || isValidatingPassword}>
                       {isClearing ? 'Removendo...' : 'Zerar Sistema'}
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+                      <AlertDialogTitle>Confirme sua senha</AlertDialogTitle>
                       <AlertDialogDescription>
                         Esta ação não pode ser desfeita. Isso irá remover permanentemente todos os dados do sistema, incluindo:
                         <ul className="list-disc list-inside mt-2 space-y-1">
@@ -178,13 +212,46 @@ export default function Settings() {
                           <li>Todos os termos aditivos</li>
                           <li>Todos os pagamentos</li>
                           <li>Todos os documentos</li>
+                          <li>Todos os fornecedores</li>
                         </ul>
+                        <div className="mt-4">
+                          <Label htmlFor="password-confirm">Digite sua senha para confirmar:</Label>
+                          <div className="relative mt-2">
+                            <Input
+                              id="password-confirm"
+                              type={showPassword ? "text" : "password"}
+                              value={password}
+                              onChange={(e) => setPassword(e.target.value)}
+                              placeholder="Sua senha atual"
+                              className="pr-10"
+                              disabled={isValidatingPassword || isClearing}
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                              onClick={() => setShowPassword(!showPassword)}
+                              disabled={isValidatingPassword || isClearing}
+                            >
+                              {showPassword ? (
+                                <EyeOff className="h-4 w-4 text-muted-foreground" />
+                              ) : (
+                                <Eye className="h-4 w-4 text-muted-foreground" />
+                              )}
+                            </Button>
+                          </div>
+                        </div>
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleClearData} className="bg-destructive text-destructive-foreground">
-                        Sim, zerar sistema
+                      <AlertDialogCancel onClick={() => setPassword('')}>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction 
+                        onClick={handleClearData} 
+                        className="bg-destructive text-destructive-foreground"
+                        disabled={!password.trim() || isValidatingPassword || isClearing}
+                      >
+                        {isValidatingPassword ? 'Validando...' : isClearing ? 'Removendo...' : 'Sim, zerar sistema'}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
