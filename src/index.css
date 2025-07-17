@@ -14,8 +14,8 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 84% 4.9%;
 
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
@@ -33,7 +33,26 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
+
+    /* Dashboard colors */
+    --dashboard-primary: 217.2 91.2% 59.8%;
+    --dashboard-secondary: 142.1 76.2% 36.3%;
+    --dashboard-accent: 38.4 94.4% 59.6%;
+    --dashboard-warning: 25.0 95.0% 53.0%;
+    --dashboard-success: 142.1 70.6% 45.3%;
+    --dashboard-error: 0 84.2% 60.2%;
+    
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(217.2 91.2% 59.8%), hsl(217.2 91.2% 70%));
+    --gradient-secondary: linear-gradient(135deg, hsl(142.1 76.2% 36.3%), hsl(142.1 76.2% 45%));
+    --gradient-accent: linear-gradient(135deg, hsl(38.4 94.4% 59.6%), hsl(38.4 94.4% 70%));
+    --gradient-card: linear-gradient(135deg, hsl(0 0% 100%), hsl(210 40% 98%));
+    
+    /* Shadows */
+    --shadow-card: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-card-hover: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-stats: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -74,6 +93,25 @@
     --input: 217.2 32.6% 20%;
     --ring: 217.2 91.2% 59.8%;
     
+    /* Dark mode dashboard colors */
+    --dashboard-primary: 217.2 91.2% 59.8%;
+    --dashboard-secondary: 142.1 76.2% 45.3%;
+    --dashboard-accent: 38.4 94.4% 59.6%;
+    --dashboard-warning: 25.0 95.0% 60.0%;
+    --dashboard-success: 142.1 70.6% 50.3%;
+    --dashboard-error: 0 62.8% 65%;
+    
+    /* Dark gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(217.2 91.2% 59.8%), hsl(217.2 91.2% 45%));
+    --gradient-secondary: linear-gradient(135deg, hsl(142.1 76.2% 45.3%), hsl(142.1 76.2% 35%));
+    --gradient-accent: linear-gradient(135deg, hsl(38.4 94.4% 59.6%), hsl(38.4 94.4% 50%));
+    --gradient-card: linear-gradient(135deg, hsl(222.2 84% 7%), hsl(222.2 84% 10%));
+    
+    /* Dark shadows */
+    --shadow-card: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+    --shadow-card-hover: 0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.3);
+    --shadow-stats: 0 20px 25px -5px rgb(0 0 0 / 0.3), 0 8px 10px -6px rgb(0 0 0 / 0.3);
+    
     --sidebar-background: 222.2 84% 4.9%;
     --sidebar-foreground: 210 40% 98%;
     --sidebar-primary: 217.2 91.2% 59.8%;
@@ -95,7 +133,7 @@
   }
 }
 
-/* Melhorias adicionais para o modo escuro */
+/* Componentes personalizados do Dashboard */
 @layer utilities {
   .dark {
     color-scheme: dark;
@@ -123,5 +161,75 @@
   /* Transições suaves para mudança de tema */
   * {
     transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  }
+  
+  /* Dashboard Cards */
+  .dashboard-card {
+    background: var(--gradient-card);
+    border: 1px solid hsl(var(--border));
+    border-radius: calc(var(--radius) + 2px);
+    box-shadow: var(--shadow-card);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .dashboard-card:hover {
+    box-shadow: var(--shadow-card-hover);
+    transform: translateY(-2px);
+  }
+  
+  /* Stats Cards */
+  .stats-card {
+    background: var(--gradient-card);
+    border: 1px solid hsl(var(--border));
+    border-radius: calc(var(--radius) + 4px);
+    box-shadow: var(--shadow-stats);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .stats-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--gradient-primary);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  
+  .stats-card:hover::before {
+    opacity: 1;
+  }
+  
+  .stats-card:hover {
+    box-shadow: var(--shadow-card-hover);
+    transform: translateY(-4px);
+  }
+  
+  /* Gradient backgrounds */
+  .bg-gradient-primary {
+    background: var(--gradient-primary);
+  }
+  
+  .bg-gradient-secondary {
+    background: var(--gradient-secondary);
+  }
+  
+  .bg-gradient-accent {
+    background: var(--gradient-accent);
+  }
+  
+  /* Animated number */
+  .animate-number {
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  /* Progress ring */
+  .progress-ring {
+    transform: rotate(-90deg);
+    transition: all 0.5s ease;
   }
 }

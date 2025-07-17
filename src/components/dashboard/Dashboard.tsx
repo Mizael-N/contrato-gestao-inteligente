@@ -1,8 +1,9 @@
 
 import { FileText, DollarSign, Clock, AlertTriangle, TrendingUp, Users, Award, Calendar } from 'lucide-react';
 import StatCard from './StatCard';
+import MetricsGrid from './charts/MetricsGrid';
+import InteractiveCharts from './charts/InteractiveCharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Contract } from '@/types/contract';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -122,28 +123,32 @@ export default function Dashboard({ contracts = [], loading = false }: Dashboard
       title: 'Contratos Ativos',
       value: activeContracts,
       icon: FileText,
-      color: 'text-blue-600',
+      color: 'text-white',
+      gradient: 'bg-gradient-primary',
       trend: { value: 12, isPositive: true }
     },
     {
       title: 'Valor Total',
       value: totalValue > 1000000 ? `R$ ${(totalValue / 1000000).toFixed(1)}M` : `R$ ${(totalValue / 1000).toFixed(0)}K`,
       icon: DollarSign,
-      color: 'text-green-600',
+      color: 'text-white',
+      gradient: 'bg-gradient-secondary',
       trend: { value: 8, isPositive: true }
     },
     {
       title: 'Vencendo em 30 dias',
       value: expiringContracts,
       icon: Clock,
-      color: 'text-yellow-600',
+      color: 'text-white',
+      gradient: 'bg-gradient-accent',
       trend: { value: 3, isPositive: false }
     },
     {
       title: 'Alertas Críticos',
       value: alertsPendentes,
       icon: AlertTriangle,
-      color: 'text-red-600',
+      color: 'text-white',
+      gradient: 'bg-red-500',
       trend: { value: 15, isPositive: false }
     }
   ];
@@ -173,213 +178,133 @@ export default function Dashboard({ contracts = [], loading = false }: Dashboard
   const contratosVigentesPercent = contracts.length > 0 ? (activeContracts / contracts.length) * 100 : 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 p-6 bg-gradient-to-br from-background to-muted/30 min-h-screen">
+      {/* Header com gradiente */}
+      <div className="text-center space-y-2 mb-8">
+        <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+          Dashboard de Contratos
+        </h1>
+        <p className="text-muted-foreground text-lg">
+          Visão geral e análise dos seus contratos públicos
+        </p>
+      </div>
+
       {/* Cards de Estatísticas Principais */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat, index) => (
           <StatCard key={index} {...stat} />
         ))}
       </div>
 
-      {/* Métricas Secundárias */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Valor Médio</CardTitle>
-            <TrendingUp className="h-4 w-4 text-purple-600" />
+      {/* Métricas Secundárias Modernas */}
+      <div className="grid gap-6 md:grid-cols-4">
+        <Card className="dashboard-card">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Valor Médio</CardTitle>
+            <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/20">
+              <TrendingUp className="h-4 w-4 text-purple-600" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-3xl font-bold tracking-tight">
               R$ {averageValue.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
             </div>
-            <p className="text-xs text-muted-foreground">Por contrato</p>
+            <p className="text-xs text-muted-foreground mt-1">Por contrato</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Contratos</CardTitle>
-            <Users className="h-4 w-4 text-indigo-600" />
+        <Card className="dashboard-card">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total de Contratos</CardTitle>
+            <div className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900/20">
+              <Users className="h-4 w-4 text-indigo-600" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{contracts.length}</div>
-            <p className="text-xs text-muted-foreground">Cadastrados no sistema</p>
+            <div className="text-3xl font-bold tracking-tight">{contracts.length}</div>
+            <p className="text-xs text-muted-foreground mt-1">Cadastrados no sistema</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Modalidade Preferida</CardTitle>
-            <Award className="h-4 w-4 text-orange-600" />
+        <Card className="dashboard-card">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Modalidade Preferida</CardTitle>
+            <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/20">
+              <Award className="h-4 w-4 text-orange-600" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold capitalize">
+            <div className="text-2xl font-bold capitalize tracking-tight">
               {Object.entries(contractsByModality).sort(([,a], [,b]) => b - a)[0]?.[0]?.replace('_', ' ') || 'N/A'}
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground mt-1">
               {Object.entries(contractsByModality).sort(([,a], [,b]) => b - a)[0]?.[1] || 0} contratos
             </p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Vencidos</CardTitle>
-            <Calendar className="h-4 w-4 text-red-500" />
+        <Card className="dashboard-card">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Vencidos</CardTitle>
+            <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/20">
+              <Calendar className="h-4 w-4 text-red-600" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{expiredContracts}</div>
-            <p className="text-xs text-muted-foreground">Precisam de atenção</p>
+            <div className="text-3xl font-bold text-red-600 tracking-tight">{expiredContracts}</div>
+            <p className="text-xs text-muted-foreground mt-1">Precisam de atenção</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Seção de Gráficos e Análises */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle>Execução Orçamentária</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <div className="flex justify-between text-sm mb-2">
-                <span>Orçamento Executado</span>
-                <span className="font-medium">{orcamentoExecutado.toFixed(1)}%</span>
-              </div>
-              <Progress value={orcamentoExecutado} className="h-2" />
-              <div className="text-xs text-muted-foreground mt-1">
-                R$ {totalValue.toLocaleString('pt-BR')} de R$ {orcamentoAnual.toLocaleString('pt-BR')}
-              </div>
-            </div>
-            <div>
-              <div className="flex justify-between text-sm mb-2">
-                <span>Contratos Vigentes</span>
-                <span className="font-medium">{contratosVigentesPercent.toFixed(0)}%</span>
-              </div>
-              <Progress value={contratosVigentesPercent} className="h-2" />
-              <div className="text-xs text-muted-foreground mt-1">
-                {activeContracts} de {contracts.length} contratos
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Métricas Grid */}
+      <MetricsGrid contracts={contracts} />
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Distribuição por Modalidade</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {Object.entries(contractsByModality)
-                .sort(([,a], [,b]) => b - a)
-                .slice(0, 5)
-                .map(([modalidade, count]) => (
-                <div key={modalidade} className="flex justify-between items-center">
-                  <span className="text-sm capitalize font-medium">
-                    {modalidade.replace('_', ' ')}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm">{count}</span>
-                    <div className="w-16 bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-blue-600 h-2 rounded-full" 
-                        style={{ width: `${(count / contracts.length) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {Object.keys(contractsByModality).length === 0 && (
-                <p className="text-center text-gray-500 py-4">Nenhum dado disponível</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+      {/* Gráficos Interativos */}
+      <InteractiveCharts contracts={contracts} />
 
-        <Card>
+      {/* Seção de Contratos Compacta */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card className="dashboard-card">
           <CardHeader>
-            <CardTitle>Status dos Contratos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {Object.entries(contractsByStatus)
-                .sort(([,a], [,b]) => b - a)
-                .map(([status, count]) => (
-                <div key={status} className="flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <Badge 
-                      variant={
-                        status === 'vigente' ? 'default' : 
-                        status === 'suspenso' ? 'secondary' : 
-                        'destructive'
-                      }
-                      className="text-xs"
-                    >
-                      {status}
-                    </Badge>
-                  </div>
-                  <span className="font-medium">{count}</span>
-                </div>
-              ))}
-              {Object.keys(contractsByStatus).length === 0 && (
-                <p className="text-center text-gray-500 py-4">Nenhum dado disponível</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Seção de Contratos */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Contratos Recentes</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <div className="w-2 h-6 bg-gradient-primary rounded-full"></div>
+              Contratos Recentes
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {recentContracts.length === 0 ? (
-              <p className="text-center text-gray-500 py-8">Nenhum contrato cadastrado ainda</p>
+              <div className="text-center py-12">
+                <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">Nenhum contrato cadastrado ainda</p>
+              </div>
             ) : (
               <div className="space-y-3">
-                {recentContracts.map((contract, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors">
+                {recentContracts.slice(0, 3).map((contract, index) => (
+                  <div key={index} className="flex items-center justify-between p-4 border rounded-lg bg-card/50 hover:bg-card transition-all duration-200 hover:shadow-md">
                     <div className="flex-1">
-                      <p className="font-medium text-sm">{contract.numero}</p>
-                      <p className="text-xs text-gray-600 mb-1">{contract.objeto}</p>
+                      <p className="font-semibold text-sm">{contract.numero}</p>
+                      <p className="text-xs text-muted-foreground mb-2">{contract.objeto}</p>
                       <div className="flex items-center gap-2">
                         <Badge variant="outline" className="text-xs">
                           {contract.modalidade.replace('_', ' ')}
                         </Badge>
-                        <span className="text-xs text-gray-500">
-                          Vence: {contract.vencimento}
-                        </span>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-medium text-sm">
-                        R$ {contract.valor.toLocaleString('pt-BR')}
+                      <p className="font-bold text-sm">
+                        R$ {(contract.valor / 1000).toFixed(0)}K
                       </p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Badge 
-                          variant={
-                            contract.status === 'vigente' ? 'default' : 
-                            contract.status === 'suspenso' ? 'secondary' : 
-                            'destructive'
-                          }
-                          className="text-xs"
-                        >
-                          {contract.status}
-                        </Badge>
-                        {contract.diasVencimento <= 30 && contract.diasVencimento > 0 && (
-                          <Badge variant="outline" className="text-xs text-orange-600">
-                            {contract.diasVencimento}d
-                          </Badge>
-                        )}
-                        {contract.diasVencimento <= 0 && (
-                          <Badge variant="destructive" className="text-xs">
-                            Vencido
-                          </Badge>
-                        )}
-                      </div>
+                      <Badge 
+                        variant={
+                          contract.status === 'vigente' ? 'default' : 
+                          contract.status === 'suspenso' ? 'secondary' : 
+                          'destructive'
+                        }
+                        className="text-xs mt-1"
+                      >
+                        {contract.status}
+                      </Badge>
                     </div>
                   </div>
                 ))}
@@ -388,31 +313,37 @@ export default function Dashboard({ contracts = [], loading = false }: Dashboard
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="dashboard-card">
           <CardHeader>
-            <CardTitle>Maiores Contratos</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <div className="w-2 h-6 bg-gradient-secondary rounded-full"></div>
+              Maiores Contratos
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {topValueContracts.length === 0 ? (
-              <p className="text-center text-gray-500 py-8">Nenhum contrato cadastrado ainda</p>
+              <div className="text-center py-12">
+                <DollarSign className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">Nenhum contrato cadastrado ainda</p>
+              </div>
             ) : (
               <div className="space-y-3">
-                {topValueContracts.map((contract, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors">
+                {topValueContracts.slice(0, 3).map((contract, index) => (
+                  <div key={index} className="flex items-center justify-between p-4 border rounded-lg bg-card/50 hover:bg-card transition-all duration-200 hover:shadow-md">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                        <span className="text-xs font-bold text-blue-600">#{index + 1}</span>
+                      <div className="w-8 h-8 bg-gradient-primary rounded-full flex items-center justify-center">
+                        <span className="text-xs font-bold text-white">#{index + 1}</span>
                       </div>
                       <div>
-                        <p className="font-medium text-sm">{contract.numero}</p>
-                        <p className="text-xs text-gray-600">
-                          {contract.objeto.length > 40 ? contract.objeto.substring(0, 40) + '...' : contract.objeto}
+                        <p className="font-semibold text-sm">{contract.numero}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {contract.objeto.length > 30 ? contract.objeto.substring(0, 30) + '...' : contract.objeto}
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-sm">
-                        R$ {contract.valor.toLocaleString('pt-BR')}
+                      <p className="font-bold text-lg">
+                        R$ {(contract.valor / 1000000).toFixed(1)}M
                       </p>
                       <Badge 
                         variant={

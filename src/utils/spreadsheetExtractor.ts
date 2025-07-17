@@ -2,17 +2,17 @@ import { Contract } from '@/types/contract';
 
 // Mapas de correspondência para identificar colunas
 const FIELD_MAPPINGS = {
-  numero: ['numero', 'número', 'contrato', 'processo', 'num', 'nº', 'number'],
-  objeto: ['objeto', 'descrição', 'descricao', 'servico', 'serviço', 'description', 'item'],
-  contratante: ['contratante', 'orgao', 'órgão', 'cliente', 'solicitante', 'prefeitura', 'municipio', 'município', 'government'],
-  contratada: ['contratada', 'empresa', 'fornecedor', 'prestador', 'supplier'],
-  valor: ['valor', 'preco', 'preço', 'price', 'amount', 'total', 'custo'],
-  dataAssinatura: ['data', 'assinatura', 'inicio', 'início', 'date', 'signed'],
-  prazoExecucao: ['prazo', 'duracao', 'duração', 'meses', 'dias', 'duration'],
-  modalidade: ['modalidade', 'tipo', 'licitacao', 'licitação', 'modality'],
-  status: ['status', 'situacao', 'situação', 'estado', 'state'],
-  fiscal: ['fiscal', 'responsavel', 'responsável', 'gestor', 'manager'],
-  garantia: ['garantia', 'caucao', 'caução', 'seguro', 'guarantee']
+  numero: ['numero', 'número', 'contrato', 'processo', 'num', 'nº', 'number', 'código', 'codigo'],
+  objeto: ['objeto', 'descrição', 'descricao', 'servico', 'serviço', 'description', 'item', 'especificação', 'especificacao'],
+  contratante: ['contratante', 'orgao', 'órgão', 'cliente', 'solicitante', 'prefeitura', 'municipio', 'município', 'government', 'secretaria'],
+  contratada: ['contratada', 'empresa', 'fornecedor', 'prestador', 'supplier', 'cnpj', 'razao social', 'razão social'],
+  valor: ['valor', 'preco', 'preço', 'price', 'amount', 'total', 'custo', 'montante', 'quantia', 'valor total', 'valor global', 'valor estimado', 'valor contratado', 'preço final', 'valor final'],
+  dataAssinatura: ['data', 'assinatura', 'inicio', 'início', 'date', 'signed', 'data inicio', 'data início', 'data assinatura', 'data contrato'],
+  prazoExecucao: ['prazo', 'duracao', 'duração', 'meses', 'dias', 'duration', 'vigencia', 'vigência', 'tempo', 'período', 'periodo'],
+  modalidade: ['modalidade', 'tipo', 'licitacao', 'licitação', 'modality', 'forma', 'processo', 'categoria'],
+  status: ['status', 'situacao', 'situação', 'estado', 'state', 'condição', 'condicao'],
+  fiscal: ['fiscal', 'responsavel', 'responsável', 'gestor', 'manager', 'responsável técnico', 'responsavel tecnico'],
+  garantia: ['garantia', 'caucao', 'caução', 'seguro', 'guarantee', 'fiança', 'aval']
 };
 
 const STATUS_MAPPINGS: Record<string, 'vigente' | 'suspenso' | 'encerrado' | 'rescindido'> = {
@@ -83,13 +83,67 @@ function parseValue(value: any): number {
   if (typeof value === 'number') return value;
   if (!value) return 0;
   
-  // Remover caracteres não numéricos exceto vírgula e ponto
-  const cleanValue = String(value)
-    .replace(/[^\d,.-]/g, '')
-    .replace(',', '.');
+  const stringValue = String(value).trim();
+  console.log(`💰 Parsing valor: "${stringValue}"`);
   
-  const parsed = parseFloat(cleanValue);
-  return isNaN(parsed) ? 0 : parsed;
+  // Detectar abreviações e converter
+  let multiplier = 1;
+  const lowerValue = stringValue.toLowerCase();
+  
+  if (lowerValue.includes('mil') || lowerValue.includes('k')) {
+    multiplier = 1000;
+  } else if (lowerValue.includes('milhão') || lowerValue.includes('milhao') || lowerValue.includes('mi') || lowerValue.includes('m')) {
+    multiplier = 1000000;
+  } else if (lowerValue.includes('bilhão') || lowerValue.includes('bilhao') || lowerValue.includes('bi') || lowerValue.includes('b')) {
+    multiplier = 1000000000;
+  }
+  
+  // Remover texto e símbolos, manter apenas números, vírgulas e pontos
+  let cleanValue = stringValue
+    .replace(/[^\d,.-]/g, '')
+    .trim();
+  
+  if (!cleanValue) return 0;
+  
+  // Detectar formato brasileiro vs internacional
+  // Formato brasileiro: 1.234.567,89 ou 1234567,89
+  // Formato internacional: 1,234,567.89 ou 1234567.89
+  
+  const commaCount = (cleanValue.match(/,/g) || []).length;
+  const dotCount = (cleanValue.match(/\./g) || []).length;
+  const lastCommaIndex = cleanValue.lastIndexOf(',');
+  const lastDotIndex = cleanValue.lastIndexOf('.');
+  
+  // Se tem vírgula e ponto, determinar qual é decimal
+  if (commaCount > 0 && dotCount > 0) {
+    if (lastCommaIndex > lastDotIndex) {
+      // Vírgula está depois do ponto: formato brasileiro (1.234.567,89)
+      cleanValue = cleanValue.replace(/\./g, '').replace(',', '.');
+    } else {
+      // Ponto está depois da vírgula: formato internacional (1,234,567.89)
+      cleanValue = cleanValue.replace(/,/g, '');
+    }
+  } else if (commaCount > 0) {
+    // Só vírgula: verificar se é separador decimal ou de milhares
+    const afterComma = cleanValue.substring(lastCommaIndex + 1);
+    if (afterComma.length <= 2 && commaCount === 1) {
+      // Provavelmente decimal brasileiro
+      cleanValue = cleanValue.replace(',', '.');
+    } else {
+      // Provavelmente separador de milhares
+      cleanValue = cleanValue.replace(/,/g, '');
+    }
+  } else if (dotCount > 1) {
+    // Múltiplos pontos: formato brasileiro de milhares (1.234.567)
+    cleanValue = cleanValue.replace(/\./g, '');
+  }
+  // Se só tem um ponto, manter como está (pode ser decimal internacional)
+  
+  const parsed = parseFloat(cleanValue) * multiplier;
+  const result = isNaN(parsed) ? 0 : parsed;
+  
+  console.log(`💰 Valor parseado: "${stringValue}" -> ${result}`);
+  return result;
 }
 
 function parseStatus(status: any): 'vigente' | 'suspenso' | 'encerrado' | 'rescindido' {
