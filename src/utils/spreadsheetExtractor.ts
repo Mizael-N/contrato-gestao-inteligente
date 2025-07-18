@@ -2,17 +2,19 @@ import { Contract } from '@/types/contract';
 
 // Mapas de correspondência para identificar colunas
 const FIELD_MAPPINGS = {
-  numero: ['numero', 'número', 'contrato', 'processo', 'num', 'nº', 'number', 'código', 'codigo'],
-  objeto: ['objeto', 'descrição', 'descricao', 'servico', 'serviço', 'description', 'item', 'especificação', 'especificacao'],
-  contratante: ['contratante', 'orgao', 'órgão', 'cliente', 'solicitante', 'prefeitura', 'municipio', 'município', 'government', 'secretaria'],
-  contratada: ['contratada', 'empresa', 'fornecedor', 'prestador', 'supplier', 'cnpj', 'razao social', 'razão social'],
-  valor: ['valor', 'preco', 'preço', 'price', 'amount', 'total', 'custo', 'montante', 'quantia', 'valor total', 'valor global', 'valor estimado', 'valor contratado', 'preço final', 'valor final'],
-  dataAssinatura: ['data', 'assinatura', 'inicio', 'início', 'date', 'signed', 'data inicio', 'data início', 'data assinatura', 'data contrato'],
-  prazoExecucao: ['prazo', 'duracao', 'duração', 'meses', 'dias', 'duration', 'vigencia', 'vigência', 'tempo', 'período', 'periodo'],
-  modalidade: ['modalidade', 'tipo', 'licitacao', 'licitação', 'modality', 'forma', 'processo', 'categoria'],
-  status: ['status', 'situacao', 'situação', 'estado', 'state', 'condição', 'condicao'],
-  fiscal: ['fiscal', 'responsavel', 'responsável', 'gestor', 'manager', 'responsável técnico', 'responsavel tecnico'],
-  garantia: ['garantia', 'caucao', 'caução', 'seguro', 'guarantee', 'fiança', 'aval']
+  numero: ['numero', 'número', 'contrato', 'processo', 'num', 'nº', 'number', 'código', 'codigo', 'id', 'identificador'],
+  objeto: ['objeto', 'descrição', 'descricao', 'servico', 'serviço', 'description', 'item', 'especificação', 'especificacao', 'finalidade', 'escopo'],
+  contratante: ['contratante', 'orgao', 'órgão', 'cliente', 'solicitante', 'prefeitura', 'municipio', 'município', 'government', 'secretaria', 'unidade'],
+  contratada: ['contratada', 'empresa', 'fornecedor', 'prestador', 'supplier', 'cnpj', 'razao social', 'razão social', 'licitante', 'vencedora'],
+  valor: ['valor', 'preco', 'preço', 'price', 'amount', 'total', 'custo', 'montante', 'quantia', 'valor total', 'valor global', 'valor estimado', 'valor contratado', 'preço final', 'valor final', 'r$', 'reais'],
+  dataAssinatura: ['data', 'assinatura', 'inicio', 'início', 'date', 'signed', 'data inicio', 'data início', 'data assinatura', 'data contrato', 'data celebração', 'celebracao'],
+  dataInicio: ['data inicio', 'data início', 'inicio vigencia', 'início vigência', 'vigencia inicio', 'vigência início', 'data inicial', 'start', 'início execução', 'inicio execucao'],
+  dataTermino: ['data fim', 'data final', 'data termino', 'data término', 'fim vigencia', 'fim vigência', 'vigencia fim', 'vigência fim', 'final', 'end', 'término execução', 'termino execucao'],
+  prazoExecucao: ['prazo', 'duracao', 'duração', 'meses', 'dias', 'duration', 'vigencia', 'vigência', 'tempo', 'período', 'periodo', 'tempo execução', 'tempo execucao'],
+  modalidade: ['modalidade', 'tipo', 'licitacao', 'licitação', 'modality', 'forma', 'processo', 'categoria', 'tipo licitacao', 'tipo licitação'],
+  status: ['status', 'situacao', 'situação', 'estado', 'state', 'condição', 'condicao', 'situação atual', 'situacao atual'],
+  fiscal: ['fiscal', 'responsavel', 'responsável', 'gestor', 'manager', 'responsável técnico', 'responsavel tecnico', 'fiscal titular'],
+  garantia: ['garantia', 'caucao', 'caução', 'seguro', 'guarantee', 'fiança', 'aval', 'garantia contratual']
 };
 
 const STATUS_MAPPINGS: Record<string, 'vigente' | 'suspenso' | 'encerrado' | 'rescindido'> = {
@@ -59,24 +61,74 @@ function findColumnIndex(headers: string[], fieldMappings: string[]): number {
 function parseDate(dateValue: any): string {
   if (!dateValue) return new Date().toISOString().split('T')[0];
   
+  console.log(`📅 Parsing data: "${dateValue}" (tipo: ${typeof dateValue})`);
+  
   // Se já está no formato ISO
   if (typeof dateValue === 'string' && dateValue.match(/^\d{4}-\d{2}-\d{2}$/)) {
+    console.log(`📅 Data já em formato ISO: ${dateValue}`);
     return dateValue;
   }
   
-  // Tentar converter diferentes formatos
+  // Se é um número (serial date do Excel)
+  if (typeof dateValue === 'number') {
+    // Excel serial date - 1 de janeiro de 1900 é 1
+    const excelEpoch = new Date(1900, 0, 1);
+    const date = new Date(excelEpoch.getTime() + (dateValue - 1) * 24 * 60 * 60 * 1000);
+    if (!isNaN(date.getTime())) {
+      const result = date.toISOString().split('T')[0];
+      console.log(`📅 Data convertida do Excel serial: ${dateValue} -> ${result}`);
+      return result;
+    }
+  }
+  
+  // Formato brasileiro DD/MM/YYYY ou DD/MM/YY
+  if (typeof dateValue === 'string') {
+    const dateParts = dateValue.trim().replace(/\s+/g, '').match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})$/);
+    if (dateParts) {
+      let [, day, month, year] = dateParts;
+      
+      // Se ano tem 2 dígitos, assumir 20XX
+      if (year.length === 2) {
+        year = '20' + year;
+      }
+      
+      const result = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      console.log(`📅 Data convertida do formato brasileiro: ${dateValue} -> ${result}`);
+      return result;
+    }
+  }
+  
+  // Tentar converter formatos padrão
   const date = new Date(dateValue);
   if (!isNaN(date.getTime())) {
-    return date.toISOString().split('T')[0];
+    const result = date.toISOString().split('T')[0];
+    console.log(`📅 Data convertida pelo Date(): ${dateValue} -> ${result}`);
+    return result;
   }
   
-  // Formato brasileiro DD/MM/YYYY
-  if (typeof dateValue === 'string' && dateValue.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
-    const [day, month, year] = dateValue.split('/');
-    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-  }
-  
+  console.log(`⚠️ Não foi possível converter a data: ${dateValue}, usando data atual`);
   return new Date().toISOString().split('T')[0];
+}
+
+function calculateEndDate(startDate: string, prazo: number, unidade: string = 'meses'): string {
+  const start = new Date(startDate);
+  if (isNaN(start.getTime())) return startDate;
+  
+  switch (unidade.toLowerCase()) {
+    case 'dias':
+      start.setDate(start.getDate() + prazo);
+      break;
+    case 'meses':
+      start.setMonth(start.getMonth() + prazo);
+      break;
+    case 'anos':
+      start.setFullYear(start.getFullYear() + prazo);
+      break;
+    default:
+      start.setMonth(start.getMonth() + prazo); // padrão é meses
+  }
+  
+  return start.toISOString().split('T')[0];
 }
 
 function parseValue(value: any): number {
@@ -170,6 +222,27 @@ function parseModalidade(modalidade: any): 'pregao' | 'concorrencia' | 'tomada_p
   return 'pregao';
 }
 
+function detectarUnidadePrazo(prazoText: string): 'dias' | 'meses' | 'anos' {
+  const texto = normalizeValue(prazoText);
+  
+  if (texto.includes('dia') || texto.includes('day')) return 'dias';
+  if (texto.includes('ano') || texto.includes('year')) return 'anos';
+  return 'meses'; // padrão
+}
+
+function detectarStatusPorData(dataTermino: string): 'vigente' | 'suspenso' | 'encerrado' | 'rescindido' {
+  const hoje = new Date();
+  const termino = new Date(dataTermino);
+  
+  if (isNaN(termino.getTime())) return 'vigente';
+  
+  if (termino < hoje) {
+    return 'encerrado';
+  }
+  
+  return 'vigente';
+}
+
 export function extractContractFromSpreadsheetData(data: any[][], sheetName: string): Partial<Contract>[] {
   if (data.length < 2) {
     console.log(`⚠️ Aba "${sheetName}" possui poucos dados (${data.length} linhas)`);
@@ -188,6 +261,8 @@ export function extractContractFromSpreadsheetData(data: any[][], sheetName: str
     contratada: findColumnIndex(headers, FIELD_MAPPINGS.contratada),
     valor: findColumnIndex(headers, FIELD_MAPPINGS.valor),
     dataAssinatura: findColumnIndex(headers, FIELD_MAPPINGS.dataAssinatura),
+    dataInicio: findColumnIndex(headers, FIELD_MAPPINGS.dataInicio),
+    dataTermino: findColumnIndex(headers, FIELD_MAPPINGS.dataTermino),
     prazoExecucao: findColumnIndex(headers, FIELD_MAPPINGS.prazoExecucao),
     modalidade: findColumnIndex(headers, FIELD_MAPPINGS.modalidade),
     status: findColumnIndex(headers, FIELD_MAPPINGS.status),
@@ -217,18 +292,33 @@ export function extractContractFromSpreadsheetData(data: any[][], sheetName: str
       continue;
     }
     
+    // Determinar datas de início e fim
+    let dataAssinatura = columnIndexes.dataAssinatura >= 0 ? parseDate(row[columnIndexes.dataAssinatura]) : new Date().toISOString().split('T')[0];
+    let dataInicio = columnIndexes.dataInicio >= 0 ? parseDate(row[columnIndexes.dataInicio]) : dataAssinatura;
+    let dataTermino = columnIndexes.dataTermino >= 0 ? parseDate(row[columnIndexes.dataTermino]) : '';
+    
+    // Se não temos data de término, calcular com base no prazo
+    const prazoValue = columnIndexes.prazoExecucao >= 0 ? parseValue(row[columnIndexes.prazoExecucao]) || 12 : 12;
+    const prazoUnidade = detectarUnidadePrazo(columnIndexes.prazoExecucao >= 0 ? String(row[columnIndexes.prazoExecucao] || '') : '');
+    
+    if (!dataTermino) {
+      dataTermino = calculateEndDate(dataInicio, prazoValue, prazoUnidade);
+    }
+
     const contract: Partial<Contract> = {
       numero: numero || `${sheetName}-LINHA-${i}`,
       objeto: objeto || 'Objeto a ser definido com base nos dados da planilha',
       contratante: columnIndexes.contratante >= 0 ? String(row[columnIndexes.contratante] || 'Órgão Público') : 'Órgão Público',
       contratada: columnIndexes.contratada >= 0 ? String(row[columnIndexes.contratada] || 'Empresa a definir') : 'Empresa a definir',
       valor: columnIndexes.valor >= 0 ? parseValue(row[columnIndexes.valor]) : 0,
-      dataAssinatura: columnIndexes.dataAssinatura >= 0 ? parseDate(row[columnIndexes.dataAssinatura]) : new Date().toISOString().split('T')[0],
-      prazoExecucao: columnIndexes.prazoExecucao >= 0 ? parseValue(row[columnIndexes.prazoExecucao]) || 12 : 12,
-      prazoUnidade: 'meses',
+      dataAssinatura,
+      dataInicio,
+      dataTermino,
+      prazoExecucao: prazoValue,
+      prazoUnidade,
       modalidade: columnIndexes.modalidade >= 0 ? parseModalidade(row[columnIndexes.modalidade]) : 'pregao',
-      status: columnIndexes.status >= 0 ? parseStatus(row[columnIndexes.status]) : 'vigente',
-      observacoes: `Extraído da aba "${sheetName}" - linha ${i}. Revisar dados conforme necessário.`,
+      status: detectarStatusPorData(dataTermino),
+      observacoes: `Extraído da aba "${sheetName}" - linha ${i}. Data início: ${dataInicio}, Data término: ${dataTermino}. Revisar dados conforme necessário.`,
       fiscais: {
         titular: columnIndexes.fiscal >= 0 ? String(row[columnIndexes.fiscal] || 'A definir') : 'A definir',
         substituto: 'A definir'
@@ -236,7 +326,7 @@ export function extractContractFromSpreadsheetData(data: any[][], sheetName: str
       garantia: {
         tipo: 'sem_garantia',
         valor: 0,
-        dataVencimento: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+        dataVencimento: calculateEndDate(dataAssinatura, 12, 'meses')
       },
       aditivos: [],
       pagamentos: [],

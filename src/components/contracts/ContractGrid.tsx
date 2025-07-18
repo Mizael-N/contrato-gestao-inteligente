@@ -35,14 +35,37 @@ export default function ContractGrid({ contracts, onEdit, onDelete, onView, onNe
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      vigente: { label: 'Vigente', variant: 'default' as const },
-      suspenso: { label: 'Suspenso', variant: 'secondary' as const },
-      encerrado: { label: 'Encerrado', variant: 'outline' as const },
-      rescindido: { label: 'Rescindido', variant: 'destructive' as const },
+      vigente: { 
+        label: 'Vigente', 
+        variant: 'default' as const,
+        className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' 
+      },
+      suspenso: { 
+        label: 'Suspenso', 
+        variant: 'secondary' as const,
+        className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' 
+      },
+      encerrado: { 
+        label: 'Encerrado', 
+        variant: 'outline' as const,
+        className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border-red-300 dark:border-red-700' 
+      },
+      rescindido: { 
+        label: 'Rescindido', 
+        variant: 'destructive' as const,
+        className: 'bg-red-100 text-red-900 dark:bg-red-900/30 dark:text-red-300' 
+      },
     };
     
-    const config = statusConfig[status as keyof typeof statusConfig];
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.vigente;
+    return (
+      <Badge 
+        variant={config.variant} 
+        className={config.className}
+      >
+        {config.label}
+      </Badge>
+    );
   };
 
   const filteredContracts = contracts.filter(contract => {

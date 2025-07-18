@@ -1,6 +1,7 @@
 
-import { Eye } from 'lucide-react';
+import { Eye, FileSpreadsheet, FileText, Image, Brain, CheckCircle, AlertCircle } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface ImportProgressProps {
   processing: boolean;
@@ -28,63 +29,102 @@ export default function ImportProgress({ processing, importing, progress, fileTy
     }
   };
 
-  if (!processing && !importing) return null;
+  if (!processing && !importing && !progress) return null;
+
+  const getFileIcon = () => {
+    switch (fileType) {
+      case 'spreadsheet': return <FileSpreadsheet className="h-5 w-5" />;
+      case 'document': return <FileText className="h-5 w-5" />;
+      case 'image': return <Image className="h-5 w-5" />;
+      default: return <Brain className="h-5 w-5" />;
+    }
+  };
+
+  const getProgressColor = () => {
+    if (progress?.stage === 'error') return 'bg-red-500';
+    if (progress?.stage === 'complete') return 'bg-green-500';
+    return 'bg-blue-500';
+  };
+
+  const getProgressIcon = () => {
+    if (progress?.stage === 'error') return <AlertCircle className="h-5 w-5 text-red-500" />;
+    if (progress?.stage === 'complete') return <CheckCircle className="h-5 w-5 text-green-500" />;
+    return getFileIcon();
+  };
 
   return (
-    <div className="space-y-4">
-      <div className="text-center py-8">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-        <div className="space-y-3">
-          <p className="font-medium text-gray-700">{getProcessingMessage()}</p>
-          <p className="text-sm text-gray-500">{progress?.message || 'Processando arquivo...'}</p>
-          
+    <Card className="border-l-4 border-l-blue-500">
+      <CardContent className="pt-6">
+        <div className="space-y-4">
+          {/* Barra de Progresso Melhorada */}
           {progress && (
-            <div className="max-w-xs mx-auto space-y-2">
-              <Progress value={progress.progress} className="w-full" />
-              <p className="text-xs text-gray-400">{progress.progress}% concluído</p>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  {getProgressIcon()}
+                  <span className="ml-2 font-medium text-sm">{progress.message}</span>
+                </div>
+                <span className="text-sm font-bold text-gray-600 dark:text-gray-400">
+                  {progress.progress}%
+                </span>
+              </div>
+              
+              <Progress 
+                value={progress.progress} 
+                className="w-full h-2"
+              />
+              
+              {progress.stage !== 'error' && progress.stage !== 'complete' && (
+                <div className="flex justify-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                </div>
+              )}
+              
+              {/* Detalhes do processo */}
+              <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1 mt-4">
+                {fileType === 'spreadsheet' && progress.stage !== 'complete' && progress.stage !== 'error' && (
+                  <>
+                    <p>• Carregando e analisando planilha</p>
+                    <p>• Processando todas as abas encontradas</p>
+                    <p>• Mapeando colunas automaticamente</p>
+                    <p>• Normalizando datas e valores monetários</p>
+                    <p>• Detectando status por vigência</p>
+                    <p>• Calculando datas de início e término</p>
+                  </>
+                )}
+                {fileType === 'document' && progress.stage !== 'complete' && progress.stage !== 'error' && (
+                  <>
+                    <p>• Extraindo texto do documento</p>
+                    <p>• Aplicando OCR se necessário</p>
+                    <p>• Identificando campos de contrato</p>
+                    <p>• Normalizando dados extraídos</p>
+                  </>
+                )}
+                {fileType === 'image' && progress.stage !== 'complete' && progress.stage !== 'error' && (
+                  <>
+                    <p>• Aplicando reconhecimento ótico (OCR)</p>
+                    <p>• Corrigindo erros de reconhecimento</p>
+                    <p>• Extraindo informações estruturadas</p>
+                  </>
+                )}
+              </div>
             </div>
           )}
-          
-          <div className="text-xs text-gray-400 space-y-1 mt-4">
-            {fileType === 'spreadsheet' && (
-              <>
-                <p>• Carregando e analisando planilha</p>
-                <p>• Processando todas as abas encontradas</p>
-                <p>• Mapeando colunas automaticamente</p>
-                <p>• Normalizando datas e valores</p>
-                <p>• Extraindo informações de contratos</p>
-              </>
-            )}
-            {fileType === 'document' && (
-              <>
-                <p>• Extraindo texto do documento</p>
-                <p>• Aplicando OCR se necessário</p>
-                <p>• Identificando campos de contrato</p>
-                <p>• Normalizando dados extraídos</p>
-              </>
-            )}
-            {fileType === 'image' && (
-              <>
-                <p>• Aplicando reconhecimento ótico (OCR)</p>
-                <p>• Corrigindo erros de reconhecimento</p>
-                <p>• Extraindo informações estruturadas</p>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
 
-      {extractedText && (
-        <div className="space-y-3">
-          <div className="flex items-center">
-            <Eye className="h-4 w-4 mr-2" />
-            <h4 className="font-medium">Texto Extraído</h4>
-          </div>
-          <div className="p-4 bg-gray-50 rounded-lg max-h-40 overflow-auto">
-            <pre className="text-xs text-gray-700 whitespace-pre-wrap">{extractedText}</pre>
-          </div>
+          {/* Texto Extraído (apenas para documentos/imagens) */}
+          {extractedText && fileType !== 'spreadsheet' && (
+            <div className="mt-4">
+              <h4 className="font-medium mb-2 text-sm flex items-center">
+                <Eye className="h-4 w-4 mr-2" />
+                Texto Extraído
+              </h4>
+              <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded text-sm whitespace-pre-line max-h-32 overflow-y-auto border">
+                {extractedText}
+              </div>
+            </div>
+          )}
         </div>
-      )}
-    </div>
+      </CardContent>
+    </Card>
   );
 }

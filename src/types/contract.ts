@@ -7,6 +7,8 @@ export interface Contract {
   contratada: string;
   valor: number;
   dataAssinatura: string;
+  dataInicio?: string; // data de início da vigência
+  dataTermino?: string; // data de término da vigência
   prazoExecucao: number; // valor numérico
   prazoUnidade?: string; // 'dias' | 'meses' | 'anos'
   modalidade: 'pregao' | 'concorrencia' | 'tomada_precos' | 'convite' | 'concurso' | 'leilao';

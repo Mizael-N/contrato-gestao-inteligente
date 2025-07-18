@@ -76,14 +76,32 @@ export default function ContractManager({ contracts: propContracts, onContractsC
   };
 
   const handleImportSubmit = async (importedContracts: Partial<Contract>[]) => {
+    let successCount = 0;
+    let errorCount = 0;
+    const errors: string[] = [];
+
     try {
-      // Criar contratos um por um
+      // Criar contratos um por um para melhor controle de erros
       for (const contractData of importedContracts) {
-        await createContract(contractData);
+        try {
+          await createContract(contractData);
+          successCount++;
+        } catch (contractError) {
+          console.error(`Erro ao criar contrato ${contractData.numero}:`, contractError);
+          errors.push(`${contractData.numero || 'Sem número'}: ${contractError instanceof Error ? contractError.message : 'Erro desconhecido'}`);
+          errorCount++;
+        }
       }
+
+      // Log detalhado do resultado
+      console.log(`📊 Importação finalizada: ${successCount} sucessos, ${errorCount} erros`);
+      if (errors.length > 0) {
+        console.error('❌ Erros detalhados:', errors);
+      }
+
       setCurrentView('grid');
     } catch (error) {
-      console.error('Erro ao importar contratos:', error);
+      console.error('Erro geral na importação:', error);
     }
   };
 

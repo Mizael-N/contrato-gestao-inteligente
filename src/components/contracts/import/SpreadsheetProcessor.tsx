@@ -10,6 +10,7 @@ export const processSpreadsheet = async (
   setProgress?: (progress: { stage: string; progress: number; message: string }) => void
 ) => {
   setImporting(true);
+  setError(''); // Limpar erros anteriores
   
   try {
     console.log('🔍 Iniciando processamento completo da planilha:', file.name, 'Tipo:', file.type, 'Tamanho:', file.size);
@@ -41,21 +42,34 @@ export const processSpreadsheet = async (
         message: `Processando aba "${sheetName}" (${i + 1}/${totalSheets})...` 
       });
       
-      const worksheet = workbook.Sheets[sheetName];
-      
-      // Converter para JSON para análise - garantir que seja any[][]
-      const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
-        header: 1,
-        defval: '',
-        raw: false 
-      }) as any[][];
-      
-      console.log(`📄 Aba "${sheetName}" possui ${jsonData.length} linhas`);
-      
-      if (jsonData.length > 0) {
-        // Extrair contratos desta aba
-        const contractsFromSheet = extractContractFromSpreadsheetData(jsonData, sheetName);
-        allContracts.push(...contractsFromSheet);
+      try {
+        const worksheet = workbook.Sheets[sheetName];
+        
+        // Converter para JSON para análise - garantir que seja any[][]
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
+          header: 1,
+          defval: '',
+          raw: false 
+        }) as any[][];
+        
+        console.log(`📄 Aba "${sheetName}" possui ${jsonData.length} linhas`);
+        
+        if (jsonData.length > 1) { // Pelo menos cabeçalho + uma linha de dados
+          // Extrair contratos desta aba
+          const contractsFromSheet = extractContractFromSpreadsheetData(jsonData, sheetName);
+          
+          if (contractsFromSheet.length > 0) {
+            console.log(`✅ Aba "${sheetName}": ${contractsFromSheet.length} contratos extraídos`);
+            allContracts.push(...contractsFromSheet);
+          } else {
+            console.log(`⚠️ Aba "${sheetName}": Nenhum contrato encontrado`);
+          }
+        } else {
+          console.log(`⚠️ Aba "${sheetName}": Dados insuficientes (${jsonData.length} linhas)`);
+        }
+      } catch (sheetError) {
+        console.error(`❌ Erro processando aba "${sheetName}":`, sheetError);
+        // Continuar processando outras abas mesmo se uma falhar
       }
     }
     
@@ -101,14 +115,14 @@ export const processSpreadsheet = async (
     // Pequeno delay para mostrar o progresso completo
     setTimeout(() => {
       setPreview(allContracts);
-    }, 500);
+      setImporting(false);
+    }, 800);
     
   } catch (err) {
     console.error('❌ Erro no processamento da planilha:', err);
-    setError(`Erro ao processar a planilha "${file.name}". Verifique se o arquivo não está corrompido e tente novamente. Detalhes: ${(err as Error).message}`);
-  } finally {
-    setTimeout(() => {
-      setImporting(false);
-    }, 600);
+    const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
+    setError(`Erro ao processar a planilha "${file.name}". Verifique se o arquivo não está corrompido e tente novamente. Detalhes: ${errorMessage}`);
+    setProgress?.({ stage: 'error', progress: 0, message: `❌ Erro: ${errorMessage}` });
+    setImporting(false);
   }
 };
