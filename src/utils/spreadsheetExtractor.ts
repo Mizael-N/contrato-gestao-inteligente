@@ -112,7 +112,7 @@ function parseDate(dateValue: any): string {
 }
 
 // Função melhorada para calcular prazo entre duas datas
-function calculatePeriodBetweenDates(startDate: string, endDate: string): { prazo: number; unidade: string } {
+function calculatePeriodBetweenDates(startDate: string, endDate: string): { prazo: number; unidade: 'dias' | 'meses' | 'anos' } {
   const inicio = new Date(startDate);
   const fim = new Date(endDate);
   
@@ -336,11 +336,11 @@ export function extractContractFromSpreadsheetData(data: any[][], sheetName: str
     
     // Extrair prazo da planilha
     const prazoValue = columnIndexes.prazoExecucao >= 0 ? parseValue(row[columnIndexes.prazoExecucao]) || 12 : 12;
-    const prazoUnidade = detectarUnidadePrazo(columnIndexes.prazoExecucao >= 0 ? String(row[columnIndexes.prazoExecucao] || '') : '');
+    const prazoUnidadeDetectada = detectarUnidadePrazo(columnIndexes.prazoExecucao >= 0 ? String(row[columnIndexes.prazoExecucao] || '') : '');
     
     // Lógica inteligente para determinar prazo e datas
     let finalPrazo = prazoValue;
-    let finalUnidade = prazoUnidade;
+    let finalUnidade: 'dias' | 'meses' | 'anos' = prazoUnidadeDetectada;
     
     // Se temos ambas as datas, calcular prazo real baseado nas datas
     if (dataInicio && dataTermino) {
