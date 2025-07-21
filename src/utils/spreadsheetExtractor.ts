@@ -1,3 +1,4 @@
+
 import { Contract } from '@/types/contract';
 
 // Mapas de correspondência melhorados para identificar colunas
@@ -49,7 +50,7 @@ function normalizeValue(value: any): string {
 }
 
 function findColumnIndex(headers: string[], fieldMappings: string[]): number {
-  for (let i = 0; < headers.length; i++) {
+  for (let i = 0; i < headers.length; i++) {
     const header = normalizeValue(headers[i]);
     if (fieldMappings.some(mapping => header.includes(mapping))) {
       return i;
