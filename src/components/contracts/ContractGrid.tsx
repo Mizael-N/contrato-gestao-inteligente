@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Contract } from '@/types/contract';
 import { Button } from '@/components/ui/button';
@@ -6,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Edit, Trash2, Eye, Plus, Upload, Search, DollarSign, Calendar, Building } from 'lucide-react';
+import { Edit, Trash2, Eye, Plus, Upload, Search, DollarSign, Calendar, Building, AlertCircle } from 'lucide-react';
+import { calculateContractDates, formatDateBR } from '@/utils/contractDateUtils';
 
 interface ContractGridProps {
   contracts: Contract[];
@@ -33,12 +33,35 @@ export default function ContractGrid({ contracts, onEdit, onDelete, onView, onNe
     return new Date(dateString).toLocaleDateString('pt-BR');
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (contract: Contract) => {
+    const dateInfo = calculateContractDates(contract);
+    
+    // Usar o status calculado baseado nas datas
+    const effectiveStatus = dateInfo.hasIncompleteData ? 'dados_incompletos' : 
+                          dateInfo.status === 'vencido' ? 'vencido' :
+                          dateInfo.status === 'vencendo' ? 'vencendo' : 
+                          contract.status;
+
     const statusConfig = {
       vigente: { 
         label: 'Vigente', 
         variant: 'default' as const,
         className: 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-700' 
+      },
+      vencendo: { 
+        label: 'Vencendo', 
+        variant: 'secondary' as const,
+        className: 'bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-700' 
+      },
+      vencido: { 
+        label: 'Vencido', 
+        variant: 'destructive' as const,
+        className: 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-700' 
+      },
+      dados_incompletos: { 
+        label: 'Dados Incompletos', 
+        variant: 'outline' as const,
+        className: 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700' 
       },
       suspenso: { 
         label: 'Suspenso', 
@@ -57,14 +80,19 @@ export default function ContractGrid({ contracts, onEdit, onDelete, onView, onNe
       },
     };
     
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.vigente;
+    const config = statusConfig[effectiveStatus as keyof typeof statusConfig] || statusConfig.vigente;
     return (
-      <Badge 
-        variant={config.variant} 
-        className={`${config.className} font-medium px-2 py-1 text-xs border`}
-      >
-        {config.label}
-      </Badge>
+      <div className="flex items-center gap-1">
+        <Badge 
+          variant={config.variant} 
+          className={`${config.className} font-medium px-2 py-1 text-xs border`}
+        >
+          {config.label}
+        </Badge>
+        {dateInfo.hasIncompleteData && (
+          <AlertCircle className="h-3 w-3 text-amber-500 dark:text-amber-400" />
+        )}
+      </div>
     );
   };
 
@@ -154,56 +182,69 @@ export default function ContractGrid({ contracts, onEdit, onDelete, onView, onNe
 
       {/* Grid de Contratos */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredContracts.map((contract) => (
-          <Card key={contract.id} className="hover:shadow-lg transition-shadow cursor-pointer">
-            <CardHeader className="pb-2">
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle className="text-lg text-gray-900 dark:text-white">{contract.numero}</CardTitle>
-                  {getStatusBadge(contract.status)}
+        {filteredContracts.map((contract) => {
+          const dateInfo = calculateContractDates(contract);
+          
+          return (
+            <Card key={contract.id} className="hover:shadow-lg transition-shadow cursor-pointer">
+              <CardHeader className="pb-2">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle className="text-lg text-gray-900 dark:text-white">{contract.numero}</CardTitle>
+                    {getStatusBadge(contract)}
+                  </div>
+                  <div className="flex gap-1">
+                    <Button size="icon" variant="ghost" onClick={() => onView(contract)}>
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    <Button size="icon" variant="ghost" onClick={() => onEdit(contract)}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button size="icon" variant="ghost" onClick={() => onDelete(contract.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex gap-1">
-                  <Button size="icon" variant="ghost" onClick={() => onView(contract)}>
-                    <Eye className="h-4 w-4" />
-                  </Button>
-                  <Button size="icon" variant="ghost" onClick={() => onEdit(contract)}>
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button size="icon" variant="ghost" onClick={() => onDelete(contract.id)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2">{contract.objeto}</p>
-              
-              <div className="space-y-2">
-                <div className="flex items-center text-sm">
-                  <Building className="h-4 w-4 mr-2 text-gray-400 dark:text-gray-500" />
-                  <span className="text-gray-600 dark:text-gray-300 truncate">{contract.contratada}</span>
-                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2">{contract.objeto}</p>
                 
-                <div className="flex items-center text-sm">
-                  <DollarSign className="h-4 w-4 mr-2 text-gray-400 dark:text-gray-500" />
-                  <span className="font-medium text-green-600 dark:text-green-400">{formatCurrency(contract.valor)}</span>
-                </div>
-                
-                <div className="flex items-center text-sm">
-                  <Calendar className="h-4 w-4 mr-2 text-gray-400 dark:text-gray-500" />
-                  <span className="text-gray-600 dark:text-gray-300">{formatDate(contract.dataAssinatura)}</span>
-                </div>
-              </div>
+                <div className="space-y-2">
+                  <div className="flex items-center text-sm">
+                    <Building className="h-4 w-4 mr-2 text-gray-400 dark:text-gray-500" />
+                    <span className="text-gray-600 dark:text-gray-300 truncate">{contract.contratada}</span>
+                  </div>
+                  
+                  <div className="flex items-center text-sm">
+                    <DollarSign className="h-4 w-4 mr-2 text-gray-400 dark:text-gray-500" />
+                    <span className="font-medium text-green-600 dark:text-green-400">{formatCurrency(contract.valor)}</span>
+                  </div>
+                  
+                  <div className="flex items-center text-sm">
+                    <Calendar className="h-4 w-4 mr-2 text-gray-400 dark:text-gray-500" />
+                    <span className="text-gray-600 dark:text-gray-300">
+                      Vigência: {formatDateBR(dateInfo.dataInicio)} até {formatDateBR(dateInfo.dataTermino)}
+                    </span>
+                  </div>
 
-              <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
-                <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
-                  <span className="capitalize">{contract.modalidade.replace('_', ' ')}</span>
-                  <span>{contract.aditivos.length} aditivos</span>
+                  {dateInfo.hasIncompleteData && (
+                    <div className="flex items-center text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 p-2 rounded">
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      Completar dados de vigência
+                    </div>
+                  )}
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+
+                <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+                  <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                    <span className="capitalize">{contract.modalidade.replace('_', ' ')}</span>
+                    <span>{contract.aditivos.length} aditivos</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       {filteredContracts.length === 0 && (

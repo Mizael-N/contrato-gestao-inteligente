@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Contract, Aditivo } from '@/types/contract';
 import { useContracts } from '@/hooks/useContracts';
@@ -194,6 +193,7 @@ export default function ContractManager({ contracts: propContracts, onContractsC
       <ContractAlerts 
         contracts={contracts}
         onCreateAddendum={handleCreateAddendum}
+        onEditContract={handleEdit}
       />
       <ContractGrid
         contracts={contracts}

@@ -6,67 +6,39 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, Calendar, Plus, Clock, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { calculateContractDates, formatDateBR } from '@/utils/contractDateUtils';
+import ContractIncompleteDataAlert from './ContractIncompleteDataAlert';
 
 interface ContractAlertsProps {
   contracts: Contract[];
   onCreateAddendum: (contract: Contract) => void;
+  onEditContract?: (contract: Contract) => void;
 }
 
-export default function ContractAlerts({ contracts, onCreateAddendum }: ContractAlertsProps) {
+export default function ContractAlerts({ 
+  contracts, 
+  onCreateAddendum, 
+  onEditContract 
+}: ContractAlertsProps) {
   const [expiringContracts, setExpiringContracts] = useState<Contract[]>([]);
   const [expiredContracts, setExpiredContracts] = useState<Contract[]>([]);
 
   useEffect(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Zerar horas para comparação precisa
-    const alertThreshold = 30; // 30 dias antes do vencimento
-
     const expiring: Contract[] = [];
     const expired: Contract[] = [];
 
     contracts.forEach(contract => {
       if (contract.status !== 'vigente') return;
       
-      let expirationDate: Date;
+      const dateInfo = calculateContractDates(contract);
       
-      // Usar dataTermino se disponível, senão calcular baseado em dataInicio + prazo
-      if (contract.dataTermino) {
-        expirationDate = new Date(contract.dataTermino);
-      } else if (contract.dataInicio) {
-        expirationDate = new Date(contract.dataInicio);
-        
-        // Calcular data de vencimento baseada na unidade
-        if (contract.prazoUnidade === 'meses') {
-          expirationDate.setMonth(expirationDate.getMonth() + contract.prazoExecucao);
-        } else if (contract.prazoUnidade === 'anos') {
-          expirationDate.setFullYear(expirationDate.getFullYear() + contract.prazoExecucao);
-        } else {
-          // padrão: dias
-          expirationDate.setDate(expirationDate.getDate() + contract.prazoExecucao);
+      // Só processar contratos com dados completos para alertas de vencimento
+      if (!dateInfo.hasIncompleteData) {
+        if (dateInfo.status === 'vencido') {
+          expired.push(contract);
+        } else if (dateInfo.status === 'vencendo') {
+          expiring.push(contract);
         }
-      } else {
-        // Fallback para dataAssinatura se não houver dataInicio
-        expirationDate = new Date(contract.dataAssinatura);
-        
-        if (contract.prazoUnidade === 'meses') {
-          expirationDate.setMonth(expirationDate.getMonth() + contract.prazoExecucao);
-        } else if (contract.prazoUnidade === 'anos') {
-          expirationDate.setFullYear(expirationDate.getFullYear() + contract.prazoExecucao);
-        } else {
-          expirationDate.setDate(expirationDate.getDate() + contract.prazoExecucao);
-        }
-      }
-      
-      expirationDate.setHours(0, 0, 0, 0); // Zerar horas para comparação precisa
-      
-      const daysUntilExpiration = Math.ceil((expirationDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-      
-      console.log(`📅 Contrato ${contract.numero}: vence em ${daysUntilExpiration} dias (${expirationDate.toLocaleDateString('pt-BR')})`);
-      
-      if (daysUntilExpiration < 0) {
-        expired.push(contract);
-      } else if (daysUntilExpiration <= alertThreshold) {
-        expiring.push(contract);
       }
     });
 
@@ -75,72 +47,21 @@ export default function ContractAlerts({ contracts, onCreateAddendum }: Contract
     setExpiredContracts(expired);
   }, [contracts]);
 
-  const formatDate = (contract: Contract) => {
-    if (contract.dataTermino) {
-      return new Date(contract.dataTermino).toLocaleDateString('pt-BR');
-    }
-    
-    let baseDate: Date;
-    if (contract.dataInicio) {
-      baseDate = new Date(contract.dataInicio);
-    } else {
-      baseDate = new Date(contract.dataAssinatura);
-    }
-    
-    const expirationDate = new Date(baseDate);
-    
-    if (contract.prazoUnidade === 'meses') {
-      expirationDate.setMonth(expirationDate.getMonth() + contract.prazoExecucao);
-    } else if (contract.prazoUnidade === 'anos') {
-      expirationDate.setFullYear(expirationDate.getFullYear() + contract.prazoExecucao);
-    } else {
-      expirationDate.setDate(expirationDate.getDate() + contract.prazoExecucao);
-    }
-    
-    return expirationDate.toLocaleDateString('pt-BR');
+  const getContractDateInfo = (contract: Contract) => {
+    return calculateContractDates(contract);
   };
-
-  const getDaysUntilExpiration = (contract: Contract) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    let expirationDate: Date;
-    
-    if (contract.dataTermino) {
-      expirationDate = new Date(contract.dataTermino);
-    } else if (contract.dataInicio) {
-      expirationDate = new Date(contract.dataInicio);
-      
-      if (contract.prazoUnidade === 'meses') {
-        expirationDate.setMonth(expirationDate.getMonth() + contract.prazoExecucao);
-      } else if (contract.prazoUnidade === 'anos') {
-        expirationDate.setFullYear(expirationDate.getFullYear() + contract.prazoExecucao);
-      } else {
-        expirationDate.setDate(expirationDate.getDate() + contract.prazoExecucao);
-      }
-    } else {
-      expirationDate = new Date(contract.dataAssinatura);
-      
-      if (contract.prazoUnidade === 'meses') {
-        expirationDate.setMonth(expirationDate.getMonth() + contract.prazoExecucao);
-      } else if (contract.prazoUnidade === 'anos') {
-        expirationDate.setFullYear(expirationDate.getFullYear() + contract.prazoExecucao);
-      } else {
-        expirationDate.setDate(expirationDate.getDate() + contract.prazoExecucao);
-      }
-    }
-    
-    expirationDate.setHours(0, 0, 0, 0);
-    
-    return Math.ceil((expirationDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-  };
-
-  if (expiringContracts.length === 0 && expiredContracts.length === 0) {
-    return null;
-  }
 
   return (
     <div className="space-y-4 mb-6">
+      {/* Alerta para contratos com dados incompletos */}
+      {onEditContract && (
+        <ContractIncompleteDataAlert 
+          contracts={contracts}
+          onEditContract={onEditContract}
+        />
+      )}
+
+      {/* Contratos vencidos */}
       {expiredContracts.length > 0 && (
         <Alert className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/30">
           <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
@@ -152,7 +73,8 @@ export default function ContractAlerts({ contracts, onCreateAddendum }: Contract
             </div>
             <div className="mt-3 space-y-2">
               {expiredContracts.map(contract => {
-                const daysOverdue = Math.abs(getDaysUntilExpiration(contract));
+                const dateInfo = getContractDateInfo(contract);
+                const daysOverdue = Math.abs(dateInfo.diasRestantes);
                 return (
                   <div key={contract.id} className="flex items-center justify-between bg-white dark:bg-red-900/20 p-3 rounded border border-red-200 dark:border-red-800">
                     <div className="flex-1">
@@ -161,7 +83,7 @@ export default function ContractAlerts({ contracts, onCreateAddendum }: Contract
                         {contract.numero} - {contract.objeto}
                       </p>
                       <p className="text-xs text-red-700 dark:text-red-300 mt-1">
-                        Vencido há {daysOverdue} dias ({formatDate(contract)})
+                        Vencido há {daysOverdue} dias (término: {formatDateBR(dateInfo.dataTermino)})
                       </p>
                     </div>
                     <Button
@@ -181,6 +103,7 @@ export default function ContractAlerts({ contracts, onCreateAddendum }: Contract
         </Alert>
       )}
 
+      {/* Contratos próximos ao vencimento */}
       {expiringContracts.length > 0 && (
         <Alert className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/30">
           <AlertCircle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
@@ -192,7 +115,7 @@ export default function ContractAlerts({ contracts, onCreateAddendum }: Contract
             </div>
             <div className="mt-3 space-y-2">
               {expiringContracts.map(contract => {
-                const daysLeft = getDaysUntilExpiration(contract);
+                const dateInfo = getContractDateInfo(contract);
                 return (
                   <div key={contract.id} className="flex items-center justify-between bg-white dark:bg-orange-900/20 p-3 rounded border border-orange-200 dark:border-orange-800">
                     <div className="flex-1">
@@ -201,7 +124,7 @@ export default function ContractAlerts({ contracts, onCreateAddendum }: Contract
                         {contract.numero} - {contract.objeto}
                       </p>
                       <p className="text-xs text-orange-700 dark:text-orange-300 mt-1">
-                        Vence em {daysLeft} dias ({formatDate(contract)})
+                        Vence em {dateInfo.diasRestantes} dias (término: {formatDateBR(dateInfo.dataTermino)})
                       </p>
                     </div>
                     <Button

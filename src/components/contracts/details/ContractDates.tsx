@@ -1,77 +1,47 @@
 
 import { Contract } from '@/types/contract';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, Clock, AlertTriangle } from 'lucide-react';
+import { Calendar, Clock, AlertTriangle, AlertCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { calculateContractDates, formatDateBR, getStatusLabel } from '@/utils/contractDateUtils';
 
 interface ContractDatesProps {
   contract: Contract;
 }
 
 export default function ContractDates({ contract }: ContractDatesProps) {
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR');
-  };
-
-  const calculateExpirationDate = () => {
-    if (contract.dataTermino) {
-      return new Date(contract.dataTermino);
-    }
-    
-    let baseDate: Date;
-    if (contract.dataInicio) {
-      baseDate = new Date(contract.dataInicio);
-    } else {
-      baseDate = new Date(contract.dataAssinatura);
-    }
-    
-    const expirationDate = new Date(baseDate);
-    
-    if (contract.prazoUnidade === 'meses') {
-      expirationDate.setMonth(expirationDate.getMonth() + contract.prazoExecucao);
-    } else if (contract.prazoUnidade === 'anos') {
-      expirationDate.setFullYear(expirationDate.getFullYear() + contract.prazoExecucao);
-    } else {
-      expirationDate.setDate(expirationDate.getDate() + contract.prazoExecucao);
-    }
-    
-    return expirationDate;
-  };
-
-  const getDaysUntilExpiration = () => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const expirationDate = calculateExpirationDate();
-    expirationDate.setHours(0, 0, 0, 0);
-    
-    return Math.ceil((expirationDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-  };
+  const dateInfo = calculateContractDates(contract);
 
   const getExpirationStatus = () => {
-    const daysUntilExpiration = getDaysUntilExpiration();
-    
-    if (daysUntilExpiration < 0) {
-      return {
-        status: 'expired',
-        label: `Vencido há ${Math.abs(daysUntilExpiration)} dias`,
-        variant: 'destructive' as const,
-        icon: <AlertTriangle className="h-4 w-4" />
-      };
-    } else if (daysUntilExpiration <= 30) {
-      return {
-        status: 'expiring',
-        label: `Vence em ${daysUntilExpiration} dias`,
-        variant: 'secondary' as const,
-        icon: <Clock className="h-4 w-4" />
-      };
-    } else {
-      return {
-        status: 'active',
-        label: `${daysUntilExpiration} dias restantes`,
-        variant: 'default' as const,
-        icon: <Calendar className="h-4 w-4" />
-      };
+    switch (dateInfo.status) {
+      case 'vencido':
+        return {
+          status: 'expired',
+          label: `Vencido há ${Math.abs(dateInfo.diasRestantes)} dias`,
+          variant: 'destructive' as const,
+          icon: <AlertTriangle className="h-4 w-4" />
+        };
+      case 'vencendo':
+        return {
+          status: 'expiring',
+          label: `Vence em ${dateInfo.diasRestantes} dias`,
+          variant: 'secondary' as const,
+          icon: <Clock className="h-4 w-4" />
+        };
+      case 'dados_incompletos':
+        return {
+          status: 'incomplete',
+          label: 'Dados de vigência incompletos',
+          variant: 'outline' as const,
+          icon: <AlertCircle className="h-4 w-4" />
+        };
+      default:
+        return {
+          status: 'active',
+          label: `${dateInfo.diasRestantes} dias restantes`,
+          variant: 'default' as const,
+          icon: <Calendar className="h-4 w-4" />
+        };
     }
   };
 
@@ -92,18 +62,35 @@ export default function ContractDates({ contract }: ContractDatesProps) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {dateInfo.hasIncompleteData && (
+          <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mb-4">
+            <div className="flex items-center text-amber-800 dark:text-amber-200 mb-2">
+              <AlertCircle className="h-4 w-4 mr-2" />
+              <span className="font-medium text-sm">Dados de Vigência Incompletos</span>
+            </div>
+            <p className="text-xs text-amber-700 dark:text-amber-300">
+              {!contract.dataInicio && 'Data de início não definida. '}
+              {!contract.dataTermino && 'Data de término não definida. '}
+              As datas mostradas foram calculadas automaticamente e podem não refletir a vigência real do contrato.
+            </p>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Data de Assinatura</label>
-            <p className="text-sm font-medium">{formatDate(contract.dataAssinatura)}</p>
+            <p className="text-sm font-medium">{formatDateBR(contract.dataAssinatura)}</p>
           </div>
           
-          {contract.dataInicio && (
-            <div>
-              <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Data de Início da Vigência</label>
-              <p className="text-sm font-medium">{formatDate(contract.dataInicio)}</p>
-            </div>
-          )}
+          <div>
+            <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
+              Data de Início da Vigência
+              {!contract.dataInicio && (
+                <span className="text-amber-600 dark:text-amber-400 ml-1">(calculada)</span>
+              )}
+            </label>
+            <p className="text-sm font-medium">{formatDateBR(dateInfo.dataInicio)}</p>
+          </div>
           
           <div>
             <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Prazo de Execução</label>
@@ -114,11 +101,12 @@ export default function ContractDates({ contract }: ContractDatesProps) {
           
           <div>
             <label className="text-sm font-medium text-gray-500 dark:text-gray-400">
-              {contract.dataTermino ? 'Data de Término (Definida)' : 'Data de Término (Calculada)'}
+              Data de Término da Vigência
+              {!contract.dataTermino && (
+                <span className="text-amber-600 dark:text-amber-400 ml-1">(calculada)</span>
+              )}
             </label>
-            <p className="text-sm font-medium">
-              {contract.dataTermino ? formatDate(contract.dataTermino) : calculateExpirationDate().toLocaleDateString('pt-BR')}
-            </p>
+            <p className="text-sm font-medium">{formatDateBR(dateInfo.dataTermino)}</p>
           </div>
         </div>
         
@@ -126,11 +114,12 @@ export default function ContractDates({ contract }: ContractDatesProps) {
           <div className="flex items-center justify-between text-sm">
             <span className="text-gray-600 dark:text-gray-400">Status do Contrato:</span>
             <span className={`font-medium ${
-              expirationStatus.status === 'expired' ? 'text-red-600 dark:text-red-400' :
-              expirationStatus.status === 'expiring' ? 'text-orange-600 dark:text-orange-400' :
+              dateInfo.status === 'vencido' ? 'text-red-600 dark:text-red-400' :
+              dateInfo.status === 'vencendo' ? 'text-orange-600 dark:text-orange-400' :
+              dateInfo.status === 'dados_incompletos' ? 'text-amber-600 dark:text-amber-400' :
               'text-green-600 dark:text-green-400'
             }`}>
-              {expirationStatus.label}
+              {getStatusLabel(dateInfo.status)}
             </span>
           </div>
         </div>
