@@ -6,7 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { 
   transformDatabaseContracts, 
-  transformContractToDatabase, 
+  transformContractToInsert,
+  transformContractToUpdate,
   DatabaseContract 
 } from '@/utils/contractTransformers';
 
@@ -47,11 +48,11 @@ export function useContracts() {
   const createContractMutation = useMutation({
     mutationFn: async (contractData: Partial<Contract>) => {
       console.log('📝 Criando novo contrato:', contractData);
-      const dbData = transformContractToDatabase(contractData);
+      const dbData = transformContractToInsert(contractData);
       
       const { data, error } = await supabase
         .from('contracts')
-        .insert([dbData])
+        .insert(dbData)
         .select()
         .single();
 
@@ -76,7 +77,7 @@ export function useContracts() {
   const updateContractMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<Contract> }) => {
       console.log('📝 Atualizando contrato:', id, data);
-      const dbData = transformContractToDatabase(data);
+      const dbData = transformContractToUpdate(data);
       
       const { data: updatedData, error } = await supabase
         .from('contracts')

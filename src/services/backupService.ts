@@ -1,7 +1,11 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { Contract } from '@/types/contract';
-import { transformDatabaseContracts, transformContractToDatabase } from '@/utils/contractTransformers';
+import { 
+  transformDatabaseContracts, 
+  transformContractToInsert,
+  DatabaseContract 
+} from '@/utils/contractTransformers';
 
 export interface BackupData {
   version: string;
@@ -78,11 +82,11 @@ export class BackupService {
       // Restaurar contratos
       if (backupData.contracts.length > 0) {
         // Converter contratos para formato do banco
-        const dbContracts = backupData.contracts.map(contract => transformContractToDatabase(contract));
+        const dbContracts = backupData.contracts.map(contract => transformContractToInsert(contract));
         
         const { error: contractsError } = await supabase
           .from('contracts')
-          .upsert(dbContracts, { onConflict: 'id' });
+          .upsert(dbContracts, { onConflict: 'numero' });
         
         if (contractsError) throw contractsError;
       }

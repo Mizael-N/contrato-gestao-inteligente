@@ -24,6 +24,46 @@ export interface DatabaseContract {
   updated_at: string;
 }
 
+// Tipo para inserção (sem campos gerados automaticamente)
+export interface DatabaseContractInsert {
+  numero: string;
+  objeto: string;
+  contratante: string;
+  contratada: string;
+  valor: number;
+  data_assinatura: string;
+  prazo_execucao: number;
+  prazo_unidade: string;
+  modalidade: string;
+  status: string;
+  observacoes?: string | null;
+  fiscal_titular?: string | null;
+  fiscal_substituto?: string | null;
+  garantia_tipo: string;
+  garantia_valor: number;
+  garantia_vencimento?: string | null;
+}
+
+// Tipo para atualização (todos opcionais exceto obrigatórios)
+export interface DatabaseContractUpdate {
+  numero?: string;
+  objeto?: string;
+  contratante?: string;
+  contratada?: string;
+  valor?: number;
+  data_assinatura?: string;
+  prazo_execucao?: number;
+  prazo_unidade?: string;
+  modalidade?: string;
+  status?: string;
+  observacoes?: string | null;
+  fiscal_titular?: string | null;
+  fiscal_substituto?: string | null;
+  garantia_tipo?: string;
+  garantia_valor?: number;
+  garantia_vencimento?: string | null;
+}
+
 // Transformar dados do banco para a interface Contract
 export function transformDatabaseToContract(dbContract: DatabaseContract): Contract {
   return {
@@ -54,27 +94,50 @@ export function transformDatabaseToContract(dbContract: DatabaseContract): Contr
   };
 }
 
-// Transformar Contract para formato do banco
-export function transformContractToDatabase(contract: Partial<Contract>): Partial<DatabaseContract> {
+// Transformar Contract para formato de inserção no banco
+export function transformContractToInsert(contract: Partial<Contract>): DatabaseContractInsert {
   return {
-    id: contract.id,
-    numero: contract.numero,
-    objeto: contract.objeto,
-    contratante: contract.contratante,
-    contratada: contract.contratada,
-    valor: contract.valor,
-    data_assinatura: contract.dataAssinatura,
-    prazo_execucao: contract.prazoExecucao,
-    prazo_unidade: contract.prazoUnidade,
-    modalidade: contract.modalidade,
-    status: contract.status,
-    observacoes: contract.observacoes,
-    fiscal_titular: contract.fiscais?.titular,
-    fiscal_substituto: contract.fiscais?.substituto,
-    garantia_tipo: contract.garantia?.tipo,
-    garantia_valor: contract.garantia?.valor,
-    garantia_vencimento: contract.garantia?.dataVencimento,
+    numero: contract.numero || '',
+    objeto: contract.objeto || '',
+    contratante: contract.contratante || '',
+    contratada: contract.contratada || '',
+    valor: contract.valor || 0,
+    data_assinatura: contract.dataAssinatura || new Date().toISOString().split('T')[0],
+    prazo_execucao: contract.prazoExecucao || 365,
+    prazo_unidade: contract.prazoUnidade || 'dias',
+    modalidade: contract.modalidade || 'pregao',
+    status: contract.status || 'vigente',
+    observacoes: contract.observacoes || null,
+    fiscal_titular: contract.fiscais?.titular || null,
+    fiscal_substituto: contract.fiscais?.substituto || null,
+    garantia_tipo: contract.garantia?.tipo || 'sem_garantia',
+    garantia_valor: contract.garantia?.valor || 0,
+    garantia_vencimento: contract.garantia?.dataVencimento || null,
   };
+}
+
+// Transformar Contract para formato de atualização no banco
+export function transformContractToUpdate(contract: Partial<Contract>): DatabaseContractUpdate {
+  const updateData: DatabaseContractUpdate = {};
+  
+  if (contract.numero !== undefined) updateData.numero = contract.numero;
+  if (contract.objeto !== undefined) updateData.objeto = contract.objeto;
+  if (contract.contratante !== undefined) updateData.contratante = contract.contratante;
+  if (contract.contratada !== undefined) updateData.contratada = contract.contratada;
+  if (contract.valor !== undefined) updateData.valor = contract.valor;
+  if (contract.dataAssinatura !== undefined) updateData.data_assinatura = contract.dataAssinatura;
+  if (contract.prazoExecucao !== undefined) updateData.prazo_execucao = contract.prazoExecucao;
+  if (contract.prazoUnidade !== undefined) updateData.prazo_unidade = contract.prazoUnidade;
+  if (contract.modalidade !== undefined) updateData.modalidade = contract.modalidade;
+  if (contract.status !== undefined) updateData.status = contract.status;
+  if (contract.observacoes !== undefined) updateData.observacoes = contract.observacoes;
+  if (contract.fiscais?.titular !== undefined) updateData.fiscal_titular = contract.fiscais.titular;
+  if (contract.fiscais?.substituto !== undefined) updateData.fiscal_substituto = contract.fiscais.substituto;
+  if (contract.garantia?.tipo !== undefined) updateData.garantia_tipo = contract.garantia.tipo;
+  if (contract.garantia?.valor !== undefined) updateData.garantia_valor = contract.garantia.valor;
+  if (contract.garantia?.dataVencimento !== undefined) updateData.garantia_vencimento = contract.garantia.dataVencimento;
+
+  return updateData;
 }
 
 // Transformar array de contratos do banco
