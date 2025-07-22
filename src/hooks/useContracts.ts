@@ -1,328 +1,200 @@
-import { useState, useEffect } from 'react';
+
+import { useState, useEffect, useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Contract, Aditivo } from '@/types/contract';
 import { supabase } from '@/integrations/supabase/client';
-import { Contract, Aditivo, Pagamento, Documento } from '@/types/contract';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth';
+import { useNotifications } from '@/contexts/NotificationContext';
 
-export const useContracts = () => {
-  const [contracts, setContracts] = useState<Contract[]>([]);
-  const [loading, setLoading] = useState(false); // Começar com false para não bloquear
-  const { toast } = useToast();
-  const { user, loading: authLoading } = useAuth();
+const CONTRACTS_QUERY_KEY = ['contracts'];
 
-  console.log('📋 useContracts - Hook initialized, user exists:', !!user, 'authLoading:', authLoading);
+export function useContracts() {
+  const queryClient = useQueryClient();
+  const { showNotification } = useNotifications();
 
-  // Converter dados do banco para o formato da aplicação
-  const mapDatabaseToContract = (dbContract: any, addendums: any[] = [], payments: any[] = [], documents: any[] = []): Contract => {
-    return {
-      id: dbContract.id,
-      numero: dbContract.numero,
-      objeto: dbContract.objeto,
-      contratante: dbContract.contratante,
-      contratada: dbContract.contratada,
-      valor: parseFloat(dbContract.valor),
-      dataAssinatura: dbContract.data_assinatura,
-      prazoExecucao: dbContract.prazo_execucao,
-      prazoUnidade: dbContract.prazo_unidade,
-      modalidade: dbContract.modalidade,
-      status: dbContract.status,
-      observacoes: dbContract.observacoes || '',
-      fiscais: {
-        titular: dbContract.fiscal_titular || '',
-        substituto: dbContract.fiscal_substituto || ''
-      },
-      garantia: {
-        tipo: dbContract.garantia_tipo,
-        valor: parseFloat(dbContract.garantia_valor),
-        dataVencimento: dbContract.garantia_vencimento || ''
-      },
-      aditivos: addendums.map(mapDatabaseToAddendum),
-      pagamentos: payments.map(mapDatabaseToPayment),
-      documentos: documents.map(mapDatabaseToDocument)
-    };
-  };
-
-  const mapDatabaseToAddendum = (dbAddendum: any): Aditivo => ({
-    id: dbAddendum.id,
-    numero: dbAddendum.numero,
-    tipo: dbAddendum.tipo,
-    justificativa: dbAddendum.justificativa,
-    valorAnterior: dbAddendum.valor_anterior ? parseFloat(dbAddendum.valor_anterior) : undefined,
-    valorNovo: dbAddendum.valor_novo ? parseFloat(dbAddendum.valor_novo) : undefined,
-    prazoAnterior: dbAddendum.prazo_anterior || undefined,
-    prazoNovo: dbAddendum.prazo_novo || undefined,
-    dataAssinatura: dbAddendum.data_assinatura
-  });
-
-  const mapDatabaseToPayment = (dbPayment: any): Pagamento => ({
-    id: dbPayment.id,
-    numero: dbPayment.numero,
-    valor: parseFloat(dbPayment.valor),
-    dataVencimento: dbPayment.data_vencimento,
-    dataPagamento: dbPayment.data_pagamento || undefined,
-    status: dbPayment.status,
-    observacoes: dbPayment.observacoes || ''
-  });
-
-  const mapDatabaseToDocument = (dbDocument: any): Documento => ({
-    id: dbDocument.id,
-    nome: dbDocument.nome,
-    tipo: dbDocument.tipo,
-    dataUpload: dbDocument.data_upload,
-    url: dbDocument.url
-  });
-
-  // Converter dados da aplicação para o formato do banco
-  const mapContractToDatabase = (contract: Partial<Contract>) => ({
-    numero: contract.numero,
-    objeto: contract.objeto,
-    contratante: contract.contratante,
-    contratada: contract.contratada,
-    valor: contract.valor,
-    data_assinatura: contract.dataAssinatura,
-    prazo_execucao: contract.prazoExecucao,
-    prazo_unidade: contract.prazoUnidade,
-    modalidade: contract.modalidade,
-    status: contract.status,
-    observacoes: contract.observacoes,
-    fiscal_titular: contract.fiscais?.titular,
-    fiscal_substituto: contract.fiscais?.substituto,
-    garantia_tipo: contract.garantia?.tipo,
-    garantia_valor: contract.garantia?.valor,
-    garantia_vencimento: contract.garantia?.dataVencimento
-  });
-
-  // Buscar todos os contratos
-  const fetchContracts = async () => {
-    if (!user || authLoading) {
-      console.log('🚫 useContracts - No user or auth loading, skipping fetch');
-      return;
-    }
-
-    try {
-      console.log('📥 useContracts - Starting to fetch contracts');
-      setLoading(true);
-      
-      // Buscar contratos com timeout
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Timeout')), 10000)
-      );
-
-      const contractsPromise = supabase
+  // Query principal para buscar contratos com cache
+  const {
+    data: contracts = [],
+    isLoading: loading,
+    error,
+    refetch
+  } = useQuery({
+    queryKey: CONTRACTS_QUERY_KEY,
+    queryFn: async () => {
+      console.log('🔄 Buscando contratos do Supabase...');
+      const { data, error } = await supabase
         .from('contracts')
         .select('*')
         .order('created_at', { ascending: false });
 
-      const { data: contractsData, error: contractsError } = await Promise.race([
-        contractsPromise,
-        timeoutPromise
-      ]) as any;
-
-      if (contractsError) {
-        console.error('❌ Error fetching contracts:', contractsError);
-        throw contractsError;
+      if (error) {
+        console.error('❌ Erro ao buscar contratos:', error);
+        throw error;
       }
 
-      console.log('📊 useContracts - Found contracts:', contractsData?.length || 0);
+      console.log('✅ Contratos carregados:', data?.length || 0);
+      return data || [];
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutos
+    gcTime: 10 * 60 * 1000, // 10 minutos
+  });
 
-      // Buscar dados relacionados para cada contrato (máximo 5 para performance)
-      const limitedContracts = (contractsData || []).slice(0, 50); // Limitar para melhorar performance
-      const contractsWithRelations = await Promise.all(
-        limitedContracts.map(async (contract) => {
-          try {
-            const [addendums, payments, documents] = await Promise.all([
-              supabase.from('addendums').select('*').eq('contract_id', contract.id).limit(10),
-              supabase.from('payments').select('*').eq('contract_id', contract.id).limit(10),
-              supabase.from('documents').select('*').eq('contract_id', contract.id).limit(10)
-            ]);
-
-            return mapDatabaseToContract(
-              contract,
-              addendums.data || [],
-              payments.data || [],
-              documents.data || []
-            );
-          } catch (error) {
-            console.error('❌ Error fetching related data for contract:', contract.id, error);
-            // Retornar contrato sem dados relacionados em caso de erro
-            return mapDatabaseToContract(contract, [], [], []);
-          }
-        })
-      );
-
-      console.log('✅ useContracts - Contracts loaded successfully:', contractsWithRelations.length);
-      setContracts(contractsWithRelations);
-    } catch (error) {
-      console.error('💥 Erro ao buscar contratos:', error);
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível carregar os contratos.',
-        variant: 'destructive'
-      });
-      setContracts([]);
-    } finally {
-      setLoading(false);
-      console.log('🏁 useContracts - Fetch completed, loading set to false');
-    }
-  };
-
-  // Criar contrato
-  const createContract = async (contractData: Partial<Contract>) => {
-    try {
+  // Mutation para criar contrato
+  const createContractMutation = useMutation({
+    mutationFn: async (contractData: Partial<Contract>) => {
+      console.log('📝 Criando novo contrato:', contractData);
       const { data, error } = await supabase
         .from('contracts')
-        .insert([mapContractToDatabase(contractData)])
+        .insert([contractData])
         .select()
         .single();
 
       if (error) throw error;
-
-      const newContract = mapDatabaseToContract(data);
-      setContracts(prev => [newContract, ...prev]);
-      
-      toast({
-        title: 'Sucesso',
-        description: 'Contrato criado com sucesso!'
-      });
-
-      return newContract;
-    } catch (error) {
-      console.error('Erro ao criar contrato:', error);
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível criar o contrato.',
-        variant: 'destructive'
-      });
-      throw error;
+      return data;
+    },
+    onSuccess: (newContract) => {
+      // Atualizar cache imediatamente
+      queryClient.setQueryData(CONTRACTS_QUERY_KEY, (old: Contract[] = []) => [
+        newContract,
+        ...old
+      ]);
+      showNotification('Sucesso', 'Contrato criado com sucesso!', 'success');
+    },
+    onError: (error) => {
+      console.error('❌ Erro ao criar contrato:', error);
+      showNotification('Erro', 'Falha ao criar contrato.', 'error');
     }
-  };
+  });
 
-  // Atualizar contrato
-  const updateContract = async (id: string, contractData: Partial<Contract>) => {
-    try {
-      const { data, error } = await supabase
+  // Mutation para atualizar contrato
+  const updateContractMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<Contract> }) => {
+      console.log('📝 Atualizando contrato:', id, data);
+      const { data: updatedData, error } = await supabase
         .from('contracts')
-        .update(mapContractToDatabase(contractData))
+        .update(data)
         .eq('id', id)
         .select()
         .single();
 
       if (error) throw error;
-
-      await fetchContracts();
-      
-      toast({
-        title: 'Sucesso',
-        description: 'Contrato atualizado com sucesso!'
-      });
-
-      return data;
-    } catch (error) {
-      console.error('Erro ao atualizar contrato:', error);
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível atualizar o contrato.',
-        variant: 'destructive'
-      });
-      throw error;
+      return updatedData;
+    },
+    onSuccess: (updatedContract) => {
+      // Atualizar cache imediatamente
+      queryClient.setQueryData(CONTRACTS_QUERY_KEY, (old: Contract[] = []) =>
+        old.map(contract => 
+          contract.id === updatedContract.id ? updatedContract : contract
+        )
+      );
+      showNotification('Sucesso', 'Contrato atualizado com sucesso!', 'success');
+    },
+    onError: (error) => {
+      console.error('❌ Erro ao atualizar contrato:', error);
+      showNotification('Erro', 'Falha ao atualizar contrato.', 'error');
     }
-  };
+  });
 
-  // Deletar contrato
-  const deleteContract = async (id: string) => {
-    try {
+  // Mutation para deletar contrato
+  const deleteContractMutation = useMutation({
+    mutationFn: async (contractId: string) => {
+      console.log('🗑️ Deletando contrato:', contractId);
       const { error } = await supabase
         .from('contracts')
         .delete()
-        .eq('id', id);
+        .eq('id', contractId);
 
       if (error) throw error;
-
-      setContracts(prev => prev.filter(contract => contract.id !== id));
-      
-      toast({
-        title: 'Sucesso',
-        description: 'Contrato excluído com sucesso!'
-      });
-    } catch (error) {
-      console.error('Erro ao deletar contrato:', error);
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível excluir o contrato.',
-        variant: 'destructive'
-      });
-      throw error;
+      return contractId;
+    },
+    onSuccess: (deletedId) => {
+      // Remover do cache imediatamente
+      queryClient.setQueryData(CONTRACTS_QUERY_KEY, (old: Contract[] = []) =>
+        old.filter(contract => contract.id !== deletedId)
+      );
+      showNotification('Sucesso', 'Contrato removido com sucesso!', 'success');
+    },
+    onError: (error) => {
+      console.error('❌ Erro ao deletar contrato:', error);
+      showNotification('Erro', 'Falha ao remover contrato.', 'error');
     }
-  };
+  });
 
-  // Criar aditivo
-  const createAddendum = async (contractId: string, addendumData: Omit<Aditivo, 'id'>) => {
-    try {
-      const { data, error } = await supabase
-        .from('addendums')
-        .insert([{
-          contract_id: contractId,
-          numero: addendumData.numero,
-          tipo: addendumData.tipo,
-          justificativa: addendumData.justificativa,
-          valor_anterior: addendumData.valorAnterior,
-          valor_novo: addendumData.valorNovo,
-          prazo_anterior: addendumData.prazoAnterior,
-          prazo_novo: addendumData.prazoNovo,
-          data_assinatura: addendumData.dataAssinatura
-        }])
+  // Mutation para criar aditivo
+  const createAddendumMutation = useMutation({
+    mutationFn: async ({ contractId, addendumData }: { contractId: string; addendumData: Omit<Aditivo, 'id'> }) => {
+      console.log('📝 Criando aditivo para contrato:', contractId, addendumData);
+      
+      // Buscar contrato atual
+      const { data: contract, error: fetchError } = await supabase
+        .from('contracts')
+        .select('*')
+        .eq('id', contractId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Adicionar novo aditivo
+      const newAddendum = {
+        ...addendumData,
+        id: crypto.randomUUID(),
+      };
+
+      const updatedAddendums = [...(contract.aditivos || []), newAddendum];
+
+      // Atualizar contrato com novo aditivo
+      const { data: updatedContract, error: updateError } = await supabase
+        .from('contracts')
+        .update({ aditivos: updatedAddendums })
+        .eq('id', contractId)
         .select()
         .single();
 
-      if (error) throw error;
-
-      if (addendumData.tipo === 'valor' && addendumData.valorNovo) {
-        await updateContract(contractId, { valor: addendumData.valorNovo });
-      }
-      if (addendumData.tipo === 'prazo' && addendumData.prazoNovo) {
-        await updateContract(contractId, { prazoExecucao: addendumData.prazoNovo });
-      }
-
-      await fetchContracts();
-      
-      toast({
-        title: 'Sucesso',
-        description: 'Termo aditivo criado com sucesso!'
-      });
-
-      return data;
-    } catch (error) {
-      console.error('Erro ao criar aditivo:', error);
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível criar o termo aditivo.',
-        variant: 'destructive'
-      });
-      throw error;
+      if (updateError) throw updateError;
+      return updatedContract;
+    },
+    onSuccess: (updatedContract) => {
+      // Atualizar cache
+      queryClient.setQueryData(CONTRACTS_QUERY_KEY, (old: Contract[] = []) =>
+        old.map(contract => 
+          contract.id === updatedContract.id ? updatedContract : contract
+        )
+      );
+      showNotification('Sucesso', 'Aditivo criado com sucesso!', 'success');
+    },
+    onError: (error) => {
+      console.error('❌ Erro ao criar aditivo:', error);
+      showNotification('Erro', 'Falha ao criar aditivo.', 'error');
     }
-  };
+  });
 
-  useEffect(() => {
-    console.log('🔄 useContracts - Effect triggered, user exists:', !!user, 'authLoading:', authLoading);
-    if (user && !authLoading) {
-      // Delay para evitar corrida com o auth
-      const timeoutId = setTimeout(() => {
-        fetchContracts();
-      }, 100);
-      
-      return () => clearTimeout(timeoutId);
-    } else {
-      setContracts([]);
-    }
-  }, [user, authLoading]);
+  // Funções expostas
+  const createContract = useCallback((contractData: Partial<Contract>) => {
+    return createContractMutation.mutateAsync(contractData);
+  }, [createContractMutation]);
+
+  const updateContract = useCallback((id: string, data: Partial<Contract>) => {
+    return updateContractMutation.mutateAsync({ id, data });
+  }, [updateContractMutation]);
+
+  const deleteContract = useCallback((contractId: string) => {
+    return deleteContractMutation.mutateAsync(contractId);
+  }, [deleteContractMutation]);
+
+  const createAddendum = useCallback((contractId: string, addendumData: Omit<Aditivo, 'id'>) => {
+    return createAddendumMutation.mutateAsync({ contractId, addendumData });
+  }, [createAddendumMutation]);
 
   return {
     contracts,
     loading,
+    error,
+    refetch,
     createContract,
     updateContract,
     deleteContract,
     createAddendum,
-    refetch: fetchContracts
+    isCreating: createContractMutation.isPending,
+    isUpdating: updateContractMutation.isPending,
+    isDeleting: deleteContractMutation.isPending,
   };
-};
+}

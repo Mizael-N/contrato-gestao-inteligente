@@ -6,8 +6,11 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
+import { NotificationProvider } from '@/contexts/NotificationContext';
 import { useContracts } from '@/hooks/useContracts';
+import { useResponsive } from '@/hooks/useResponsive';
 import Navbar from '@/components/layout/Navbar';
+import MobileNavbar from '@/components/mobile/MobileNavbar';
 import Dashboard from '@/components/dashboard/Dashboard';
 import ContractManager from '@/components/contracts/ContractManager';
 import UserManagement from '@/components/users/UserManagement';
@@ -16,11 +19,22 @@ import Auth from '@/pages/Auth';
 import { Loader2 } from 'lucide-react';
 import SupplierManager from '@/components/suppliers/SupplierManager';
 
-const queryClient = new QueryClient();
+// Configurar React Query com cache persistente
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutos
+      gcTime: 10 * 60 * 1000, // 10 minutos (anteriormente cacheTime)
+      retry: 2,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 function ProtectedApp() {
   const { user, loading, isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
+  const { isMobile } = useResponsive();
   
   const contractsHook = useContracts();
 
@@ -30,6 +44,7 @@ function ProtectedApp() {
     activeTab,
     contractsCount: contractsHook.contracts.length,
     contractsLoading: contractsHook.loading,
+    isMobile,
     timestamp: new Date().toISOString()
   });
 
@@ -72,9 +87,19 @@ function ProtectedApp() {
 
   console.log('✅ ProtectedApp - Rendering main app interface');
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <Navbar activeTab={activeTab} onTabChange={setActiveTab} />
-      <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-background">
+      {/* Navbar responsiva */}
+      {isMobile ? (
+        <MobileNavbar activeTab={activeTab} onTabChange={setActiveTab} />
+      ) : (
+        <Navbar activeTab={activeTab} onTabChange={setActiveTab} />
+      )}
+      
+      {/* Conteúdo principal */}
+      <main className={`
+        max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8
+        ${isMobile ? 'pb-20' : ''}
+      `}>
         {renderContent()}
       </main>
     </div>
@@ -88,15 +113,17 @@ const App = () => {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <AuthProvider>
-          <Router>
-            <Routes>
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/" element={<ProtectedApp />} />
-              <Route path="*" element={<Navigate to="/auth" replace />} />
-            </Routes>
-            <Toaster />
-            <Sonner />
-          </Router>
+          <NotificationProvider>
+            <Router>
+              <Routes>
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/" element={<ProtectedApp />} />
+                <Route path="*" element={<Navigate to="/auth" replace />} />
+              </Routes>
+              <Toaster />
+              <Sonner />
+            </Router>
+          </NotificationProvider>
         </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>

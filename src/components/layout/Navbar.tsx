@@ -4,6 +4,7 @@ import { FileText, Home, Settings, Users, Shield } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import UserMenu from './UserMenu';
 import ThemeToggle from './ThemeToggle';
+import NotificationCenter from '@/components/notifications/NotificationCenter';
 
 interface NavbarProps {
   activeTab: string;
@@ -33,15 +34,15 @@ export default function Navbar({ activeTab, onTabChange }: NavbarProps) {
   console.log('🎯 Navbar - Tabs available:', tabs.map(t => t.id), 'isAdmin:', isAdmin);
 
   return (
-    <nav className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+    <nav className="bg-card border-b border-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white flex items-center">
+              <h1 className="text-xl font-bold text-foreground flex items-center">
                 SGL
                 {isAdmin && (
-                  <span className="ml-2 text-xs bg-blue-600 text-white px-2 py-1 rounded-full font-medium">
+                  <span className="ml-2 text-xs bg-primary text-primary-foreground px-2 py-1 rounded-full font-medium">
                     ADMIN
                   </span>
                 )}
@@ -65,7 +66,8 @@ export default function Navbar({ activeTab, onTabChange }: NavbarProps) {
             </div>
           </div>
           
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2">
+            <NotificationCenter />
             <ThemeToggle />
             <UserMenu />
           </div>
