@@ -20,14 +20,15 @@ export function calculateContractDates(contract: {
   // Verificar se temos dados incompletos
   const hasIncompleteData = !contract.dataInicio || !contract.dataTermino;
 
-  // Se não temos dataInicio, usar dataAssinatura
+  // A dataInicio é a data de início da vigência
+  // Se não informada, usar dataAssinatura como fallback
   let dataInicio = contract.dataInicio || contract.dataAssinatura;
   let dataTermino = contract.dataTermino;
 
-  // Se não temos dataTermino, calcular baseado no prazo
+  // Se não temos dataTermino, calcular baseado no prazo a partir da data de início da vigência
   if (!dataTermino && dataInicio) {
-    const inicioDate = new Date(dataInicio);
-    const terminoDate = new Date(inicioDate);
+    const inicioVigenciaDate = new Date(dataInicio);
+    const terminoDate = new Date(inicioVigenciaDate);
     
     const prazoUnidade = contract.prazoUnidade || 'dias';
     
@@ -45,20 +46,20 @@ export function calculateContractDates(contract: {
     dataTermino = terminoDate.toISOString().split('T')[0];
   }
 
-  // Se ainda não temos dataTermino, usar uma data padrão
+  // Se ainda não temos dataTermino, usar um cálculo baseado na data de assinatura
   if (!dataTermino) {
     const fallbackDate = new Date(contract.dataAssinatura);
     fallbackDate.setFullYear(fallbackDate.getFullYear() + 1); // 1 ano por padrão
     dataTermino = fallbackDate.toISOString().split('T')[0];
   }
 
-  // Calcular dias restantes
+  // Calcular dias restantes baseado na data de término da vigência
   const terminoDate = new Date(dataTermino);
   terminoDate.setHours(0, 0, 0, 0);
   
   const diasRestantes = Math.ceil((terminoDate.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
 
-  // Determinar status
+  // Determinar status baseado na vigência
   let status: 'vigente' | 'vencendo' | 'vencido' | 'dados_incompletos';
   
   if (hasIncompleteData) {

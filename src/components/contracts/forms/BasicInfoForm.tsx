@@ -12,6 +12,8 @@ interface BasicInfoFormProps {
     contratada: string;
     valor: number;
     dataAssinatura: string;
+    dataInicio?: string;
+    dataTermino?: string;
     prazoExecucao: number;
     prazoUnidade: string;
     modalidade: string;
@@ -127,6 +129,35 @@ export default function BasicInfoForm({ formData, onChange }: BasicInfoFormProps
               <SelectItem value="anos">Anos</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="dataInicio">Data de Início da Vigência</Label>
+          <Input
+            id="dataInicio"
+            type="date"
+            value={formData.dataInicio || ''}
+            onChange={(e) => onChange('dataInicio', e.target.value)}
+            placeholder="Opcional - se não informada, será usada a data de assinatura"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Data em que o contrato passa a ter validade jurídica
+          </p>
+        </div>
+        <div>
+          <Label htmlFor="dataTermino">Data de Término da Vigência</Label>
+          <Input
+            id="dataTermino"
+            type="date"
+            value={formData.dataTermino || ''}
+            onChange={(e) => onChange('dataTermino', e.target.value)}
+            placeholder="Opcional - será calculada automaticamente"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Data em que o contrato expira - calculada automaticamente se não informada
+          </p>
         </div>
       </div>
 

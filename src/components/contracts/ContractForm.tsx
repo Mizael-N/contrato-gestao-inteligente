@@ -22,6 +22,8 @@ export default function ContractForm({ contract, onSubmit, onCancel }: ContractF
     contratada: contract?.contratada || '',
     valor: contract?.valor || 0,
     dataAssinatura: contract?.dataAssinatura || '',
+    dataInicio: contract?.dataInicio || '',
+    dataTermino: contract?.dataTermino || '',
     prazoExecucao: contract?.prazoExecucao || 365,
     prazoUnidade: contract?.prazoUnidade || 'dias',
     modalidade: contract?.modalidade || 'pregao',
