@@ -1,6 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { Contract } from '@/types/contract';
+import { transformDatabaseContracts, transformContractToDatabase } from '@/utils/contractTransformers';
 
 export interface BackupData {
   version: string;
@@ -27,7 +28,7 @@ export class BackupService {
       const backupData: BackupData = {
         version: '1.0.0',
         timestamp: new Date().toISOString(),
-        contracts: contractsResult.data || [],
+        contracts: transformDatabaseContracts(contractsResult.data || []),
         suppliers: suppliersResult.data || [],
         users: [] // Por segurança, não incluir dados de usuários
       };
@@ -74,14 +75,14 @@ export class BackupService {
         throw new Error('Arquivo de backup inválido');
       }
 
-      // Limpar dados existentes (apenas se confirmado pelo usuário)
-      // Esta operação deve ser feita com muito cuidado
-      
       // Restaurar contratos
       if (backupData.contracts.length > 0) {
+        // Converter contratos para formato do banco
+        const dbContracts = backupData.contracts.map(contract => transformContractToDatabase(contract));
+        
         const { error: contractsError } = await supabase
           .from('contracts')
-          .upsert(backupData.contracts, { onConflict: 'id' });
+          .upsert(dbContracts, { onConflict: 'id' });
         
         if (contractsError) throw contractsError;
       }

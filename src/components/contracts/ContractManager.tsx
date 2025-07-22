@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Contract, Aditivo } from '@/types/contract';
 import { useContracts } from '@/hooks/useContracts';
@@ -10,7 +11,7 @@ import ContractAlerts from './ContractAlerts';
 
 interface ContractManagerProps {
   contracts: Contract[];
-  onContractsChange: (contracts: Contract[]) => void;
+  onContractsChange: () => void;
 }
 
 export default function ContractManager({ contracts: propContracts, onContractsChange }: ContractManagerProps) {
