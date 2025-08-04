@@ -10,21 +10,24 @@ export interface DatabaseContract {
   contratada: string;
   valor: number;
   data_assinatura: string;
+  data_inicio: string | null;
+  data_termino: string | null;
   prazo_execucao: number;
   prazo_unidade: string;
   modalidade: string;
   status: string;
   observacoes: string | null;
-  fiscal_titular: string | null;
-  fiscal_substituto: string | null;
-  garantia_tipo: string;
-  garantia_valor: number;
-  garantia_vencimento: string | null;
+  // Campos opcionais mantidos para compatibilidade
+  fiscal_titular?: string | null;
+  fiscal_substituto?: string | null;
+  garantia_tipo?: string;
+  garantia_valor?: number;
+  garantia_vencimento?: string | null;
   created_at: string;
   updated_at: string;
 }
 
-// Tipo para inserção (sem campos gerados automaticamente)
+// Tipo para inserção
 export interface DatabaseContractInsert {
   numero: string;
   objeto: string;
@@ -32,19 +35,16 @@ export interface DatabaseContractInsert {
   contratada: string;
   valor: number;
   data_assinatura: string;
+  data_inicio: string;
+  data_termino: string;
   prazo_execucao: number;
   prazo_unidade: string;
   modalidade: string;
   status: string;
   observacoes?: string | null;
-  fiscal_titular?: string | null;
-  fiscal_substituto?: string | null;
-  garantia_tipo: string;
-  garantia_valor: number;
-  garantia_vencimento?: string | null;
 }
 
-// Tipo para atualização (todos opcionais exceto obrigatórios)
+// Tipo para atualização
 export interface DatabaseContractUpdate {
   numero?: string;
   objeto?: string;
@@ -52,20 +52,29 @@ export interface DatabaseContractUpdate {
   contratada?: string;
   valor?: number;
   data_assinatura?: string;
+  data_inicio?: string;
+  data_termino?: string;
   prazo_execucao?: number;
   prazo_unidade?: string;
   modalidade?: string;
   status?: string;
   observacoes?: string | null;
-  fiscal_titular?: string | null;
-  fiscal_substituto?: string | null;
-  garantia_tipo?: string;
-  garantia_valor?: number;
-  garantia_vencimento?: string | null;
 }
 
 // Transformar dados do banco para a interface Contract
 export function transformDatabaseToContract(dbContract: DatabaseContract): Contract {
+  // data_inicio é obrigatória - usar data_assinatura como fallback
+  const dataInicio = dbContract.data_inicio || dbContract.data_assinatura;
+  
+  // Calcular data_termino se não existir (1 ano de vigência por padrão)
+  let dataTermino = dbContract.data_termino;
+  if (!dataTermino) {
+    const inicioDate = new Date(dataInicio);
+    const terminoDate = new Date(inicioDate);
+    terminoDate.setFullYear(terminoDate.getFullYear() + 1);
+    dataTermino = terminoDate.toISOString().split('T')[0];
+  }
+
   return {
     id: dbContract.id,
     numero: dbContract.numero,
@@ -74,20 +83,13 @@ export function transformDatabaseToContract(dbContract: DatabaseContract): Contr
     contratada: dbContract.contratada,
     valor: dbContract.valor,
     dataAssinatura: dbContract.data_assinatura,
+    dataInicio: dataInicio,
+    dataTermino: dataTermino,
     prazoExecucao: dbContract.prazo_execucao,
     prazoUnidade: dbContract.prazo_unidade as 'dias' | 'meses' | 'anos',
     modalidade: dbContract.modalidade as Contract['modalidade'],
     status: dbContract.status as Contract['status'],
     observacoes: dbContract.observacoes || '',
-    fiscais: {
-      titular: dbContract.fiscal_titular || '',
-      substituto: dbContract.fiscal_substituto || '',
-    },
-    garantia: {
-      tipo: dbContract.garantia_tipo as Contract['garantia']['tipo'],
-      valor: dbContract.garantia_valor,
-      dataVencimento: dbContract.garantia_vencimento || '',
-    },
     aditivos: [], // Será preenchido separadamente se necessário
     pagamentos: [], // Será preenchido separadamente se necessário
     documentos: [], // Será preenchido separadamente se necessário
@@ -96,6 +98,18 @@ export function transformDatabaseToContract(dbContract: DatabaseContract): Contr
 
 // Transformar Contract para formato de inserção no banco
 export function transformContractToInsert(contract: Partial<Contract>): DatabaseContractInsert {
+  // data_inicio = data_assinatura por padrão
+  const dataInicio = contract.dataInicio || contract.dataAssinatura || new Date().toISOString().split('T')[0];
+  
+  // Calcular data_termino se não informada (1 ano por padrão)
+  let dataTermino = contract.dataTermino;
+  if (!dataTermino) {
+    const inicioDate = new Date(dataInicio);
+    const terminoDate = new Date(inicioDate);
+    terminoDate.setFullYear(terminoDate.getFullYear() + 1);
+    dataTermino = terminoDate.toISOString().split('T')[0];
+  }
+
   return {
     numero: contract.numero || '',
     objeto: contract.objeto || '',
@@ -103,16 +117,13 @@ export function transformContractToInsert(contract: Partial<Contract>): Database
     contratada: contract.contratada || '',
     valor: contract.valor || 0,
     data_assinatura: contract.dataAssinatura || new Date().toISOString().split('T')[0],
+    data_inicio: dataInicio,
+    data_termino: dataTermino,
     prazo_execucao: contract.prazoExecucao || 365,
     prazo_unidade: contract.prazoUnidade || 'dias',
     modalidade: contract.modalidade || 'pregao',
     status: contract.status || 'vigente',
     observacoes: contract.observacoes || null,
-    fiscal_titular: contract.fiscais?.titular || null,
-    fiscal_substituto: contract.fiscais?.substituto || null,
-    garantia_tipo: contract.garantia?.tipo || 'sem_garantia',
-    garantia_valor: contract.garantia?.valor || 0,
-    garantia_vencimento: contract.garantia?.dataVencimento || null,
   };
 }
 
@@ -126,16 +137,13 @@ export function transformContractToUpdate(contract: Partial<Contract>): Database
   if (contract.contratada !== undefined) updateData.contratada = contract.contratada;
   if (contract.valor !== undefined) updateData.valor = contract.valor;
   if (contract.dataAssinatura !== undefined) updateData.data_assinatura = contract.dataAssinatura;
+  if (contract.dataInicio !== undefined) updateData.data_inicio = contract.dataInicio;
+  if (contract.dataTermino !== undefined) updateData.data_termino = contract.dataTermino;
   if (contract.prazoExecucao !== undefined) updateData.prazo_execucao = contract.prazoExecucao;
   if (contract.prazoUnidade !== undefined) updateData.prazo_unidade = contract.prazoUnidade;
   if (contract.modalidade !== undefined) updateData.modalidade = contract.modalidade;
   if (contract.status !== undefined) updateData.status = contract.status;
   if (contract.observacoes !== undefined) updateData.observacoes = contract.observacoes;
-  if (contract.fiscais?.titular !== undefined) updateData.fiscal_titular = contract.fiscais.titular;
-  if (contract.fiscais?.substituto !== undefined) updateData.fiscal_substituto = contract.fiscais.substituto;
-  if (contract.garantia?.tipo !== undefined) updateData.garantia_tipo = contract.garantia.tipo;
-  if (contract.garantia?.valor !== undefined) updateData.garantia_valor = contract.garantia.valor;
-  if (contract.garantia?.dataVencimento !== undefined) updateData.garantia_vencimento = contract.garantia.dataVencimento;
 
   return updateData;
 }

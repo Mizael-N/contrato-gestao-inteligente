@@ -1,13 +1,10 @@
 
 import { useState, useEffect } from 'react';
 import { Contract } from '@/types/contract';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, Calendar, Plus, Clock, AlertCircle } from 'lucide-react';
+import { AlertTriangle, Calendar, Plus, Clock } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { calculateContractDates, formatDateBR } from '@/utils/contractDateUtils';
-import ContractIncompleteDataAlert from './ContractIncompleteDataAlert';
 
 interface ContractAlertsProps {
   contracts: Contract[];
@@ -17,8 +14,7 @@ interface ContractAlertsProps {
 
 export default function ContractAlerts({ 
   contracts, 
-  onCreateAddendum, 
-  onEditContract 
+  onCreateAddendum 
 }: ContractAlertsProps) {
   const [expiringContracts, setExpiringContracts] = useState<Contract[]>([]);
   const [expiredContracts, setExpiredContracts] = useState<Contract[]>([]);
@@ -32,13 +28,10 @@ export default function ContractAlerts({
       
       const dateInfo = calculateContractDates(contract);
       
-      // Só processar contratos com dados completos para alertas de vencimento
-      if (!dateInfo.hasIncompleteData) {
-        if (dateInfo.status === 'vencido') {
-          expired.push(contract);
-        } else if (dateInfo.status === 'vencendo') {
-          expiring.push(contract);
-        }
+      if (dateInfo.status === 'vencido') {
+        expired.push(contract);
+      } else if (dateInfo.status === 'vencendo') {
+        expiring.push(contract);
       }
     });
 
@@ -53,14 +46,6 @@ export default function ContractAlerts({
 
   return (
     <div className="space-y-4 mb-6">
-      {/* Alerta para contratos com dados incompletos */}
-      {onEditContract && (
-        <ContractIncompleteDataAlert 
-          contracts={contracts}
-          onEditContract={onEditContract}
-        />
-      )}
-
       {/* Contratos vencidos */}
       {expiredContracts.length > 0 && (
         <Alert className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/30">
@@ -106,7 +91,7 @@ export default function ContractAlerts({
       {/* Contratos próximos ao vencimento */}
       {expiringContracts.length > 0 && (
         <Alert className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/30">
-          <AlertCircle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+          <Calendar className="h-4 w-4 text-orange-600 dark:text-orange-400" />
           <AlertDescription>
             <div className="flex items-center justify-between">
               <span className="font-medium text-orange-800 dark:text-orange-200">

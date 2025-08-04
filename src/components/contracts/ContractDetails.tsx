@@ -7,7 +7,6 @@ import ContractBasicInfo from './details/ContractBasicInfo';
 import ContractDates from './details/ContractDates';
 import ContractParties from './details/ContractParties';
 import ContractFinancialInfo from './details/ContractFinancialInfo';
-import ContractFiscalizationInfo from './details/ContractFiscalizationInfo';
 import ContractAddendums from './details/ContractAddendums';
 import ContractDocuments from './details/ContractDocuments';
 
@@ -23,10 +22,9 @@ export default function ContractDetails({ contract, onEdit, onBack }: ContractDe
       <ContractDetailsHeader contract={contract} onEdit={onEdit} onBack={onBack} />
 
       <Tabs defaultValue="geral" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="geral">Geral</TabsTrigger>
           <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
-          <TabsTrigger value="fiscalizacao">Fiscalização</TabsTrigger>
           <TabsTrigger value="aditivos">Aditivos</TabsTrigger>
           <TabsTrigger value="documentos">Documentos</TabsTrigger>
         </TabsList>
@@ -53,10 +51,6 @@ export default function ContractDetails({ contract, onEdit, onBack }: ContractDe
 
         <TabsContent value="financeiro" className="space-y-4">
           <ContractFinancialInfo contract={contract} />
-        </TabsContent>
-
-        <TabsContent value="fiscalizacao" className="space-y-4">
-          <ContractFiscalizationInfo contract={contract} />
         </TabsContent>
 
         <TabsContent value="aditivos" className="space-y-4">

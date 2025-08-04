@@ -4,8 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Contract } from '@/types/contract';
 import BasicInfoForm from './forms/BasicInfoForm';
-import FiscalInfoForm from './forms/FiscalInfoForm';
-import GuaranteeInfoForm from './forms/GuaranteeInfoForm';
 import AddendumInfoForm from './forms/AddendumInfoForm';
 
 interface ContractFormProps {
@@ -22,18 +20,13 @@ export default function ContractForm({ contract, onSubmit, onCancel }: ContractF
     contratada: contract?.contratada || '',
     valor: contract?.valor || 0,
     dataAssinatura: contract?.dataAssinatura || '',
-    dataInicio: contract?.dataInicio || '',
+    dataInicio: contract?.dataInicio || contract?.dataAssinatura || '',
     dataTermino: contract?.dataTermino || '',
     prazoExecucao: contract?.prazoExecucao || 365,
     prazoUnidade: contract?.prazoUnidade || 'dias',
     modalidade: contract?.modalidade || 'pregao',
     status: contract?.status || 'vigente',
     observacoes: contract?.observacoes || '',
-    fiscalTitular: contract?.fiscais?.titular || '',
-    fiscalSubstituto: contract?.fiscais?.substituto || '',
-    garantiaTipo: contract?.garantia?.tipo || 'sem_garantia',
-    garantiaValor: contract?.garantia?.valor || 0,
-    garantiaVencimento: contract?.garantia?.dataVencimento || '',
     // Campos de aditivo para edição
     tipoAditivo: '',
     dataAditivo: '',
@@ -41,22 +34,58 @@ export default function ContractForm({ contract, onSubmit, onCancel }: ContractF
   });
 
   const handleFieldChange = (field: string, value: any) => {
-    setFormData({ ...formData, [field]: value });
+    const newData = { ...formData, [field]: value };
+    
+    // Se a data de assinatura mudou e não há data de início, atualizar automaticamente
+    if (field === 'dataAssinatura' && !formData.dataInicio) {
+      newData.dataInicio = value;
+    }
+    
+    // Se mudou data de início ou prazo, calcular data de término automaticamente se não existir
+    if ((field === 'dataInicio' || field === 'prazoExecucao' || field === 'prazoUnidade') && 
+        newData.dataInicio && !contract?.dataTermino) {
+      const inicioDate = new Date(newData.dataInicio);
+      const terminoDate = new Date(inicioDate);
+      
+      const prazoUnidade = newData.prazoUnidade;
+      const prazoExecucao = newData.prazoExecucao;
+      
+      switch (prazoUnidade) {
+        case 'meses':
+          terminoDate.setMonth(terminoDate.getMonth() + prazoExecucao);
+          break;
+        case 'anos':
+          terminoDate.setFullYear(terminoDate.getFullYear() + prazoExecucao);
+          break;
+        default: // dias
+          terminoDate.setDate(terminoDate.getDate() + prazoExecucao);
+      }
+      
+      newData.dataTermino = terminoDate.toISOString().split('T')[0];
+    }
+    
+    setFormData(newData);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({
+    
+    // Garantir que dataInicio seja definida
+    const finalData = {
       ...formData,
-      fiscais: {
-        titular: formData.fiscalTitular,
-        substituto: formData.fiscalSubstituto,
-      },
-      garantia: {
-        tipo: formData.garantiaTipo as any,
-        valor: formData.garantiaValor,
-        dataVencimento: formData.garantiaVencimento,
-      },
+      dataInicio: formData.dataInicio || formData.dataAssinatura,
+    };
+    
+    // Calcular dataTermino se não definida (1 ano por padrão)
+    if (!finalData.dataTermino && finalData.dataInicio) {
+      const inicioDate = new Date(finalData.dataInicio);
+      const terminoDate = new Date(inicioDate);
+      terminoDate.setFullYear(terminoDate.getFullYear() + 1);
+      finalData.dataTermino = terminoDate.toISOString().split('T')[0];
+    }
+    
+    onSubmit({
+      ...finalData,
       aditivos: contract?.aditivos || [],
       pagamentos: contract?.pagamentos || [],
       documentos: contract?.documentos || [],
@@ -71,16 +100,6 @@ export default function ContractForm({ contract, onSubmit, onCancel }: ContractF
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
           <BasicInfoForm 
-            formData={formData} 
-            onChange={handleFieldChange} 
-          />
-          
-          <FiscalInfoForm 
-            formData={formData} 
-            onChange={handleFieldChange} 
-          />
-          
-          <GuaranteeInfoForm 
             formData={formData} 
             onChange={handleFieldChange} 
           />

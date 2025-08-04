@@ -7,21 +7,12 @@ export interface Contract {
   contratada: string;
   valor: number;
   dataAssinatura: string;
-  dataInicio?: string; // data de início da vigência
-  dataTermino?: string; // data de término da vigência
-  prazoExecucao: number; // valor numérico
-  prazoUnidade?: string; // 'dias' | 'meses' | 'anos'
+  dataInicio: string; // Agora obrigatório - data de início da vigência
+  dataTermino: string; // Agora obrigatório - data de término da vigência
+  prazoExecucao: number;
+  prazoUnidade: string;
   modalidade: 'pregao' | 'concorrencia' | 'tomada_precos' | 'convite' | 'concurso' | 'leilao';
   status: 'vigente' | 'suspenso' | 'encerrado' | 'rescindido';
-  garantia: {
-    tipo: 'sem_garantia' | 'caucao' | 'seguro_garantia' | 'fianca_bancaria';
-    valor: number;
-    dataVencimento: string;
-  };
-  fiscais: {
-    titular: string;
-    substituto: string;
-  };
   aditivos: Aditivo[];
   pagamentos: Pagamento[];
   observacoes: string;
@@ -41,8 +32,9 @@ export interface Aditivo {
   valorNovo?: number;
   prazoAnterior?: number;
   prazoNovo?: number;
-  prazoUnidade?: 'dias' | 'meses' | 'anos'; // Nova propriedade
+  prazoUnidade?: 'dias' | 'meses' | 'anos';
   dataAssinatura: string;
+  documentos?: Documento[]; // Para upload de documentos por aditivo
 }
 
 export interface Pagamento {
@@ -61,6 +53,7 @@ export interface Documento {
   tipo: string;
   dataUpload: string;
   url: string;
+  aditivoId?: string; // Para vincular documento a um aditivo específico
 }
 
 export interface LicitationFilter {

@@ -30,7 +30,7 @@ export class BackupService {
       if (suppliersResult.error) throw suppliersResult.error;
 
       const backupData: BackupData = {
-        version: '1.0.0',
+        version: '2.0.0', // Versão atualizada para incluir novos campos
         timestamp: new Date().toISOString(),
         contracts: transformDatabaseContracts(contractsResult.data || []),
         suppliers: suppliersResult.data || [],
@@ -81,23 +81,50 @@ export class BackupService {
 
       // Restaurar contratos
       if (backupData.contracts.length > 0) {
-        // Converter contratos para formato do banco
-        const dbContracts = backupData.contracts.map(contract => transformContractToInsert(contract));
+        console.log(`📄 Restaurando ${backupData.contracts.length} contratos...`);
         
-        const { error: contractsError } = await supabase
-          .from('contracts')
-          .upsert(dbContracts, { onConflict: 'numero' });
+        // Converter contratos para formato do banco, incluindo novos campos
+        const dbContracts = backupData.contracts.map(contract => {
+          const insertData = transformContractToInsert(contract);
+          console.log(`Convertendo contrato ${contract.numero}:`, insertData);
+          return insertData;
+        });
         
-        if (contractsError) throw contractsError;
+        // Inserir em lotes para melhor performance
+        const batchSize = 50;
+        for (let i = 0; i < dbContracts.length; i += batchSize) {
+          const batch = dbContracts.slice(i, i + batchSize);
+          const { error: contractsError } = await supabase
+            .from('contracts')
+            .upsert(batch, { 
+              onConflict: 'numero',
+              ignoreDuplicates: false 
+            });
+          
+          if (contractsError) {
+            console.error('❌ Erro ao inserir lote de contratos:', contractsError);
+            throw contractsError;
+          }
+          
+          console.log(`✅ Lote ${Math.floor(i/batchSize) + 1} inserido com sucesso`);
+        }
       }
 
       // Restaurar fornecedores
       if (backupData.suppliers?.length > 0) {
+        console.log(`🏢 Restaurando ${backupData.suppliers.length} fornecedores...`);
+        
         const { error: suppliersError } = await supabase
           .from('suppliers')
-          .upsert(backupData.suppliers, { onConflict: 'id' });
+          .upsert(backupData.suppliers, { 
+            onConflict: 'id',
+            ignoreDuplicates: false 
+          });
         
-        if (suppliersError) throw suppliersError;
+        if (suppliersError) {
+          console.error('❌ Erro ao restaurar fornecedores:', suppliersError);
+          throw suppliersError;
+        }
       }
 
       console.log('✅ Dados restaurados com sucesso');
@@ -125,6 +152,7 @@ export class BackupService {
             throw new Error('Arquivo de backup inválido: contratos devem ser um array');
           }
           
+          console.log(`📂 Arquivo de backup validado: versão ${data.version}, ${data.contracts.length} contratos`);
           resolve(data);
         } catch (error) {
           reject(new Error(`Erro ao ler arquivo: ${error instanceof Error ? error.message : 'Erro desconhecido'}`));

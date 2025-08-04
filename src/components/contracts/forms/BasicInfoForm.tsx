@@ -1,8 +1,8 @@
 
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 
 interface BasicInfoFormProps {
   formData: {
@@ -12,11 +12,12 @@ interface BasicInfoFormProps {
     contratada: string;
     valor: number;
     dataAssinatura: string;
-    dataInicio?: string;
-    dataTermino?: string;
+    dataInicio: string;
+    dataTermino: string;
     prazoExecucao: number;
     prazoUnidade: string;
     modalidade: string;
+    status: string;
     observacoes: string;
   };
   onChange: (field: string, value: any) => void;
@@ -24,10 +25,12 @@ interface BasicInfoFormProps {
 
 export default function BasicInfoForm({ formData, onChange }: BasicInfoFormProps) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      <h3 className="text-lg font-semibold">Informações Básicas</h3>
+      
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="numero">Número do Contrato</Label>
+          <Label htmlFor="numero">Número do Contrato *</Label>
           <Input
             id="numero"
             value={formData.numero}
@@ -36,8 +39,11 @@ export default function BasicInfoForm({ formData, onChange }: BasicInfoFormProps
           />
         </div>
         <div>
-          <Label htmlFor="modalidade">Modalidade</Label>
-          <Select value={formData.modalidade} onValueChange={(value) => onChange('modalidade', value)}>
+          <Label htmlFor="modalidade">Modalidade *</Label>
+          <Select
+            value={formData.modalidade}
+            onValueChange={(value) => onChange('modalidade', value)}
+          >
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
@@ -54,7 +60,7 @@ export default function BasicInfoForm({ formData, onChange }: BasicInfoFormProps
       </div>
 
       <div>
-        <Label htmlFor="objeto">Objeto do Contrato</Label>
+        <Label htmlFor="objeto">Objeto do Contrato *</Label>
         <Textarea
           id="objeto"
           value={formData.objeto}
@@ -65,7 +71,7 @@ export default function BasicInfoForm({ formData, onChange }: BasicInfoFormProps
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="contratante">Contratante</Label>
+          <Label htmlFor="contratante">Contratante *</Label>
           <Input
             id="contratante"
             value={formData.contratante}
@@ -74,7 +80,7 @@ export default function BasicInfoForm({ formData, onChange }: BasicInfoFormProps
           />
         </div>
         <div>
-          <Label htmlFor="contratada">Contratada</Label>
+          <Label htmlFor="contratada">Contratada *</Label>
           <Input
             id="contratada"
             value={formData.contratada}
@@ -84,20 +90,40 @@ export default function BasicInfoForm({ formData, onChange }: BasicInfoFormProps
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="valor">Valor (R$)</Label>
+          <Label htmlFor="valor">Valor do Contrato (R$) *</Label>
           <Input
             id="valor"
             type="number"
             step="0.01"
             value={formData.valor}
-            onChange={(e) => onChange('valor', parseFloat(e.target.value))}
+            onChange={(e) => onChange('valor', parseFloat(e.target.value) || 0)}
             required
           />
         </div>
         <div>
-          <Label htmlFor="dataAssinatura">Data de Assinatura</Label>
+          <Label htmlFor="status">Status *</Label>
+          <Select
+            value={formData.status}
+            onValueChange={(value) => onChange('status', value)}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="vigente">Vigente</SelectItem>
+              <SelectItem value="suspenso">Suspenso</SelectItem>
+              <SelectItem value="encerrado">Encerrado</SelectItem>
+              <SelectItem value="rescindido">Rescindido</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <Label htmlFor="dataAssinatura">Data de Assinatura *</Label>
           <Input
             id="dataAssinatura"
             type="date"
@@ -107,19 +133,21 @@ export default function BasicInfoForm({ formData, onChange }: BasicInfoFormProps
           />
         </div>
         <div>
-          <Label htmlFor="prazoExecucao">Prazo de Execução</Label>
+          <Label htmlFor="prazoExecucao">Prazo de Execução *</Label>
           <Input
             id="prazoExecucao"
             type="number"
-            min="1"
             value={formData.prazoExecucao}
-            onChange={(e) => onChange('prazoExecucao', parseInt(e.target.value))}
+            onChange={(e) => onChange('prazoExecucao', parseInt(e.target.value) || 365)}
             required
           />
         </div>
         <div>
-          <Label htmlFor="prazoUnidade">Unidade</Label>
-          <Select value={formData.prazoUnidade || 'dias'} onValueChange={(value) => onChange('prazoUnidade', value)}>
+          <Label htmlFor="prazoUnidade">Unidade do Prazo *</Label>
+          <Select
+            value={formData.prazoUnidade}
+            onValueChange={(value) => onChange('prazoUnidade', value)}
+          >
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
@@ -134,29 +162,29 @@ export default function BasicInfoForm({ formData, onChange }: BasicInfoFormProps
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="dataInicio">Data de Início da Vigência</Label>
+          <Label htmlFor="dataInicio">Data de Início da Vigência *</Label>
           <Input
             id="dataInicio"
             type="date"
-            value={formData.dataInicio || ''}
+            value={formData.dataInicio}
             onChange={(e) => onChange('dataInicio', e.target.value)}
-            placeholder="Opcional - se não informada, será usada a data de assinatura"
+            required
           />
           <p className="text-xs text-gray-500 mt-1">
             Data em que o contrato passa a ter validade jurídica
           </p>
         </div>
         <div>
-          <Label htmlFor="dataTermino">Data de Término da Vigência</Label>
+          <Label htmlFor="dataTermino">Data de Término da Vigência *</Label>
           <Input
             id="dataTermino"
             type="date"
-            value={formData.dataTermino || ''}
+            value={formData.dataTermino}
             onChange={(e) => onChange('dataTermino', e.target.value)}
-            placeholder="Opcional - será calculada automaticamente"
+            required
           />
           <p className="text-xs text-gray-500 mt-1">
-            Data em que o contrato expira - calculada automaticamente se não informada
+            Data em que o contrato expira
           </p>
         </div>
       </div>
@@ -167,6 +195,7 @@ export default function BasicInfoForm({ formData, onChange }: BasicInfoFormProps
           id="observacoes"
           value={formData.observacoes}
           onChange={(e) => onChange('observacoes', e.target.value)}
+          rows={3}
         />
       </div>
     </div>
