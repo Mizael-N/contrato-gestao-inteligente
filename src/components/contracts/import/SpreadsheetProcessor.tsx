@@ -88,20 +88,13 @@ export const processSpreadsheet = async (
         contratada: 'Empresa Contratada (verificar na planilha)',
         valor: 50000,
         dataAssinatura: new Date().toISOString().split('T')[0],
+        dataInicio: new Date().toISOString().split('T')[0],
+        dataTermino: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         prazoExecucao: 12,
         prazoUnidade: 'meses',
         modalidade: 'pregao',
         status: 'vigente',
         observacoes: `Dados extraídos automaticamente da planilha "${file.name}". Foram encontradas ${workbook.SheetNames.length} abas: ${workbook.SheetNames.join(', ')}. Por favor, revise e ajuste as informações conforme necessário.`,
-        fiscais: {
-          titular: 'A definir',
-          substituto: 'A definir',
-        },
-        garantia: {
-          tipo: 'sem_garantia',
-          valor: 0,
-          dataVencimento: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        },
         aditivos: [],
         pagamentos: [],
         documentos: []

@@ -14,8 +14,6 @@ const FIELD_MAPPINGS = {
   prazoExecucao: ['prazo', 'duracao', 'duração', 'meses', 'dias', 'duration', 'vigencia', 'vigência', 'tempo', 'período', 'periodo', 'tempo execução', 'tempo execucao', 'prazo execução', 'prazo execucao'],
   modalidade: ['modalidade', 'tipo', 'licitacao', 'licitação', 'modality', 'forma', 'processo', 'categoria', 'tipo licitacao', 'tipo licitação'],
   status: ['status', 'situacao', 'situação', 'estado', 'state', 'condição', 'condicao', 'situação atual', 'situacao atual'],
-  fiscal: ['fiscal', 'responsavel', 'responsável', 'gestor', 'manager', 'responsável técnico', 'responsavel tecnico', 'fiscal titular'],
-  garantia: ['garantia', 'caucao', 'caução', 'seguro', 'guarantee', 'fiança', 'aval', 'garantia contratual']
 };
 
 const STATUS_MAPPINGS: Record<string, 'vigente' | 'suspenso' | 'encerrado' | 'rescindido'> = {
@@ -298,8 +296,6 @@ export function extractContractFromSpreadsheetData(data: any[][], sheetName: str
     prazoExecucao: findColumnIndex(headers, FIELD_MAPPINGS.prazoExecucao),
     modalidade: findColumnIndex(headers, FIELD_MAPPINGS.modalidade),
     status: findColumnIndex(headers, FIELD_MAPPINGS.status),
-    fiscal: findColumnIndex(headers, FIELD_MAPPINGS.fiscal),
-    garantia: findColumnIndex(headers, FIELD_MAPPINGS.garantia)
   };
   
   console.log(`📊 Mapeamento de colunas para aba "${sheetName}":`, columnIndexes);
@@ -350,35 +346,29 @@ export function extractContractFromSpreadsheetData(data: any[][], sheetName: str
       
       console.log(`🎯 Linha ${i}: Prazo calculado baseado nas datas: ${finalPrazo} ${finalUnidade}`);
     }
-    // Se só temos data início e prazo, calcular data término
+    // Se só temos data início e não temos data término, usar vigência padrão de 1 ano
     else if (dataInicio && !dataTermino) {
+      finalPrazo = 12; // 12 meses = 1 ano
+      finalUnidade = 'meses';
       dataTermino = calculateEndDate(dataInicio, finalPrazo, finalUnidade);
-      console.log(`📅 Linha ${i}: Data término calculada: ${dataTermino}`);
+      console.log(`📅 Linha ${i}: Data término calculada com vigência padrão de 1 ano: ${dataTermino}`);
     }
-    // Se só temos data término, calcular data início baseada no prazo
+    // Se só temos data término, calcular data início baseada no prazo padrão de 1 ano
     else if (!dataInicio && dataTermino) {
+      finalPrazo = 12; // 12 meses = 1 ano
+      finalUnidade = 'meses';
       // Calcular data início subtraindo o prazo da data término
       const inicioCalculado = new Date(dataTermino);
-      switch (finalUnidade.toLowerCase()) {
-        case 'dias':
-          inicioCalculado.setDate(inicioCalculado.getDate() - finalPrazo);
-          break;
-        case 'meses':
-          inicioCalculado.setMonth(inicioCalculado.getMonth() - finalPrazo);
-          break;
-        case 'anos':
-          inicioCalculado.setFullYear(inicioCalculado.getFullYear() - finalPrazo);
-          break;
-        default:
-          inicioCalculado.setMonth(inicioCalculado.getMonth() - finalPrazo);
-      }
+      inicioCalculado.setMonth(inicioCalculado.getMonth() - finalPrazo);
       dataInicio = inicioCalculado.toISOString().split('T')[0];
-      console.log(`📅 Linha ${i}: Data início calculada: ${dataInicio}`);
+      console.log(`📅 Linha ${i}: Data início calculada com vigência padrão: ${dataInicio}`);
     }
-    // Se não temos nenhuma das duas, calcular data término baseada no prazo
+    // Se não temos nenhuma das duas, usar vigência padrão de 1 ano
     else if (!dataTermino) {
+      finalPrazo = 12; // 12 meses = 1 ano
+      finalUnidade = 'meses';
       dataTermino = calculateEndDate(dataInicio, finalPrazo, finalUnidade);
-      console.log(`📅 Linha ${i}: Data término calculada com prazo padrão: ${dataTermino}`);
+      console.log(`📅 Linha ${i}: Data término calculada com vigência padrão de 1 ano: ${dataTermino}`);
     }
 
     const contract: Partial<Contract> = {
@@ -394,16 +384,7 @@ export function extractContractFromSpreadsheetData(data: any[][], sheetName: str
       prazoUnidade: finalUnidade,
       modalidade: columnIndexes.modalidade >= 0 ? parseModalidade(row[columnIndexes.modalidade]) : 'pregao',
       status: detectarStatusPorData(dataTermino),
-      observacoes: `Extraído da aba "${sheetName}" - linha ${i}. Data início: ${dataInicio}, Data término: ${dataTermino}, Prazo: ${finalPrazo} ${finalUnidade}. Revisar dados conforme necessário.`,
-      fiscais: {
-        titular: columnIndexes.fiscal >= 0 ? String(row[columnIndexes.fiscal] || 'A definir') : 'A definir',
-        substituto: 'A definir'
-      },
-      garantia: {
-        tipo: 'sem_garantia',
-        valor: 0,
-        dataVencimento: calculateEndDate(dataAssinatura, 12, 'meses')
-      },
+      observacoes: `Extraído da aba "${sheetName}" - linha ${i}. Data início: ${dataInicio}, Data término: ${dataTermino}, Prazo: ${finalPrazo} ${finalUnidade}. Vigência padrão aplicada conforme necessário.`,
       aditivos: [],
       pagamentos: [],
       documentos: []

@@ -236,29 +236,20 @@ export const extractContractInfo = (text: string): Partial<Contract> => {
   if (!extractedData.valor) extractedData.valor = 0;
   if (!extractedData.prazoExecucao) extractedData.prazoExecucao = 365;
 
-  // Se ainda não temos data de término, calcular com prazo padrão
+  // Se ainda não temos data de término, calcular com prazo de 1 ano por padrão
   if (!extractedData.dataTermino) {
     extractedData.dataTermino = calculateEndDateFromPeriod(
       extractedData.dataInicio || extractedData.dataAssinatura,
-      extractedData.prazoExecucao,
-      extractedData.prazoUnidade || 'dias'
+      12, // 12 meses = 1 ano
+      'meses'
     );
   }
 
   // Adicionar campos obrigatórios
-  extractedData.fiscais = {
-    titular: 'A definir',
-    substituto: 'A definir'
-  };
-  extractedData.garantia = {
-    tipo: 'sem_garantia',
-    valor: 0,
-    dataVencimento: extractedData.dataTermino || extractedData.dataAssinatura
-  };
   extractedData.aditivos = [];
   extractedData.pagamentos = [];
   extractedData.documentos = [];
-  extractedData.observacoes = 'Contrato importado via OCR - revisar informações. Datas e prazos calculados automaticamente.';
+  extractedData.observacoes = 'Contrato importado via OCR - revisar informações. Datas e prazos calculados automaticamente com vigência padrão de 1 ano.';
 
   console.log('📋 Dados finais extraídos:', {
     numero: extractedData.numero,
