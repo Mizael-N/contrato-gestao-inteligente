@@ -97,12 +97,29 @@ export function transformDatabaseToContract(dbContract: DatabaseContract): Contr
 }
 
 // Transformar Contract para formato de inserção no banco
-export function transformContractToInsert(contract: Partial<Contract>): DatabaseContractInsert {
+export function transformContractToInsert(contract: Partial<Contract> | any): DatabaseContractInsert {
+  // Limpar campos antigos que podem existir em backups antigos
+  const cleanContract = {
+    numero: contract.numero,
+    objeto: contract.objeto,
+    contratante: contract.contratante,
+    contratada: contract.contratada,
+    valor: contract.valor,
+    dataAssinatura: contract.dataAssinatura,
+    dataInicio: contract.dataInicio,
+    dataTermino: contract.dataTermino,
+    prazoExecucao: contract.prazoExecucao,
+    prazoUnidade: contract.prazoUnidade,
+    modalidade: contract.modalidade,
+    status: contract.status,
+    observacoes: contract.observacoes
+  };
+
   // data_inicio = data_assinatura por padrão
-  const dataInicio = contract.dataInicio || contract.dataAssinatura || new Date().toISOString().split('T')[0];
+  const dataInicio = cleanContract.dataInicio || cleanContract.dataAssinatura || new Date().toISOString().split('T')[0];
   
   // Calcular data_termino se não informada (1 ano por padrão)
-  let dataTermino = contract.dataTermino;
+  let dataTermino = cleanContract.dataTermino;
   if (!dataTermino) {
     const inicioDate = new Date(dataInicio);
     const terminoDate = new Date(inicioDate);
@@ -111,19 +128,19 @@ export function transformContractToInsert(contract: Partial<Contract>): Database
   }
 
   return {
-    numero: contract.numero || '',
-    objeto: contract.objeto || '',
-    contratante: contract.contratante || '',
-    contratada: contract.contratada || '',
-    valor: contract.valor || 0,
-    data_assinatura: contract.dataAssinatura || new Date().toISOString().split('T')[0],
+    numero: cleanContract.numero || '',
+    objeto: cleanContract.objeto || '',
+    contratante: cleanContract.contratante || '',
+    contratada: cleanContract.contratada || '',
+    valor: cleanContract.valor || 0,
+    data_assinatura: cleanContract.dataAssinatura || new Date().toISOString().split('T')[0],
     data_inicio: dataInicio,
     data_termino: dataTermino,
-    prazo_execucao: contract.prazoExecucao || 365,
-    prazo_unidade: contract.prazoUnidade || 'dias',
-    modalidade: contract.modalidade || 'pregao',
-    status: contract.status || 'vigente',
-    observacoes: contract.observacoes || null,
+    prazo_execucao: cleanContract.prazoExecucao || 365,
+    prazo_unidade: cleanContract.prazoUnidade || 'dias',
+    modalidade: cleanContract.modalidade || 'pregao',
+    status: cleanContract.status || 'vigente',
+    observacoes: cleanContract.observacoes || null,
   };
 }
 
