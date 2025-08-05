@@ -17,7 +17,7 @@ interface StatCardProps {
 
 export default function StatCard({ title, value, icon: Icon, trend, color, gradient }: StatCardProps) {
   return (
-    <Card className="stats-card group">
+    <Card className="stats-card group hover:shadow-md transition-shadow">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
         <CardTitle className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
           {title}
@@ -28,7 +28,7 @@ export default function StatCard({ title, value, icon: Icon, trend, color, gradi
       </CardHeader>
       <CardContent className="pb-4">
         <div className="text-3xl font-bold tracking-tight animate-number group-hover:scale-105 transition-transform">
-          {value}
+          {typeof value === 'number' ? value.toLocaleString('pt-BR') : value}
         </div>
         {trend && (
           <div className="flex items-center gap-1 mt-2">

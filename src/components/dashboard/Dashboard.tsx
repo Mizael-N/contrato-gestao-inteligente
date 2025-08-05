@@ -1,3 +1,4 @@
+
 import { useMemo } from 'react';
 import StatCard from './StatCard';
 import MetricsGrid from './charts/MetricsGrid';
@@ -33,14 +34,19 @@ export default function Dashboard({ contracts, loading }: DashboardProps) {
     const expiringSoon = contracts.filter(contract => {
       if (contract.status !== 'vigente') return false;
       
-      // Calcular data de vencimento baseada na data de início + prazo
-      const endDate = new Date(contract.dataInicio);
-      if (contract.prazoUnidade === 'anos') {
-        endDate.setFullYear(endDate.getFullYear() + contract.prazoExecucao);
-      } else if (contract.prazoUnidade === 'meses') {
-        endDate.setMonth(endDate.getMonth() + contract.prazoExecucao);
+      // Usar dataTermino se disponível, senão calcular
+      let endDate: Date;
+      if (contract.dataTermino) {
+        endDate = new Date(contract.dataTermino);
       } else {
-        endDate.setDate(endDate.getDate() + contract.prazoExecucao);
+        endDate = new Date(contract.dataInicio);
+        if (contract.prazoUnidade === 'anos') {
+          endDate.setFullYear(endDate.getFullYear() + contract.prazoExecucao);
+        } else if (contract.prazoUnidade === 'meses') {
+          endDate.setMonth(endDate.getMonth() + contract.prazoExecucao);
+        } else {
+          endDate.setDate(endDate.getDate() + contract.prazoExecucao);
+        }
       }
       
       return endDate <= thirtyDaysFromNow && endDate > today;
@@ -49,13 +55,21 @@ export default function Dashboard({ contracts, loading }: DashboardProps) {
     return { total, totalValue, active, expiringSoon };
   }, [contracts]);
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-lg">Carregando dashboard...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Cards de Estatísticas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="Total de Contratos"
-          value={stats.total.toString()}
+          value={stats.total}
           icon={FileText}
           trend={{ value: 12, isPositive: true }}
           color="text-blue-600"
@@ -71,7 +85,7 @@ export default function Dashboard({ contracts, loading }: DashboardProps) {
         />
         <StatCard
           title="Contratos Ativos"
-          value={stats.active.toString()}
+          value={stats.active}
           icon={Clock}
           trend={{ value: Math.round((stats.active / Math.max(stats.total, 1)) * 100), isPositive: true }}
           color="text-orange-600"
@@ -79,7 +93,7 @@ export default function Dashboard({ contracts, loading }: DashboardProps) {
         />
         <StatCard
           title="Vencendo em 30 dias"
-          value={stats.expiringSoon.toString()}
+          value={stats.expiringSoon}
           icon={AlertTriangle}
           trend={{ value: stats.expiringSoon, isPositive: false }}
           color={stats.expiringSoon > 0 ? "text-red-600" : "text-gray-600"}
