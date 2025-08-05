@@ -7,9 +7,53 @@ export interface BackupData {
   version: string;
   timestamp: string;
   contracts: Contract[];
+  suppliers?: any[]; // Optional suppliers field for backward compatibility
 }
 
-export const createBackup = async (): Promise<string> => {
+export class BackupService {
+  static async exportData(): Promise<BackupData> {
+    return createBackup();
+  }
+
+  static async downloadBackup(backupData: BackupData): Promise<void> {
+    const jsonString = JSON.stringify(backupData, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `backup-contratos-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  static async validateBackupFile(file: File): Promise<BackupData> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const backupData = JSON.parse(e.target?.result as string);
+          if (!backupData.contracts || !Array.isArray(backupData.contracts)) {
+            reject(new Error('Arquivo de backup inválido: contratos não encontrados'));
+          } else {
+            resolve(backupData);
+          }
+        } catch (error) {
+          reject(new Error('Arquivo JSON inválido'));
+        }
+      };
+      reader.onerror = () => reject(new Error('Erro ao ler arquivo'));
+      reader.readAsText(file);
+    });
+  }
+
+  static async restoreData(backupData: BackupData): Promise<void> {
+    return restoreBackup(JSON.stringify(backupData));
+  }
+}
+
+export const createBackup = async (): Promise<BackupData> => {
   try {
     console.log('🔄 Iniciando criação do backup...');
     
@@ -31,13 +75,12 @@ export const createBackup = async (): Promise<string> => {
     const backupData: BackupData = {
       version: '1.0',
       timestamp: new Date().toISOString(),
-      contracts: contracts
+      contracts: contracts,
+      suppliers: [] // Adicionar campo suppliers vazio para compatibilidade
     };
 
-    const jsonString = JSON.stringify(backupData, null, 2);
-    
     console.log('✅ Backup criado com sucesso');
-    return jsonString;
+    return backupData;
   } catch (error) {
     console.error('❌ Erro ao criar backup:', error);
     throw error;
@@ -87,9 +130,9 @@ export const restoreBackup = async (backupJson: string): Promise<void> => {
           contratante: contract.contratante || 'Não especificado',
           contratada: contract.contratada || 'Não especificado',
           valor: Number(contract.valor) || 0,
-          dataInicio: contract.dataInicio || contract.dataAssinatura || new Date().toISOString().split('T')[0],
+          dataInicio: contract.dataInicio || new Date().toISOString().split('T')[0],
           dataTermino: contract.dataTermino || (() => {
-            const inicio = new Date(contract.dataInicio || contract.dataAssinatura || new Date());
+            const inicio = new Date(contract.dataInicio || new Date());
             inicio.setFullYear(inicio.getFullYear() + 1);
             return inicio.toISOString().split('T')[0];
           })(),

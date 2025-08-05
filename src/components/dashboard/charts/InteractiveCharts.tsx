@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Contract } from '@/types/contract';
@@ -10,8 +11,8 @@ interface InteractiveChartsProps {
 export default function InteractiveCharts({ contracts }: InteractiveChartsProps) {
   // Calcular data de vencimento
   const getContractExpirationDate = (contract: Contract): Date => {
-    const signatureDate = new Date(contract.dataAssinatura);
-    const expirationDate = new Date(signatureDate);
+    const startDate = new Date(contract.dataInicio);
+    const expirationDate = new Date(startDate);
     
     const prazo = contract.prazoExecucao || 0;
     const unidade = contract.prazoUnidade || 'dias';
@@ -54,7 +55,7 @@ export default function InteractiveCharts({ contracts }: InteractiveChartsProps)
 
   // Dados para gráfico de barras - Contratos por mês
   const contractsByMonth = contracts.reduce((acc, contract) => {
-    const month = new Date(contract.dataAssinatura).toLocaleDateString('pt-BR', { 
+    const month = new Date(contract.dataInicio).toLocaleDateString('pt-BR', { 
       month: 'short', 
       year: 'numeric' 
     });
@@ -69,7 +70,7 @@ export default function InteractiveCharts({ contracts }: InteractiveChartsProps)
       month,
       contratos: count,
       valor: contracts
-        .filter(c => new Date(c.dataAssinatura).toLocaleDateString('pt-BR', { 
+        .filter(c => new Date(c.dataInicio).toLocaleDateString('pt-BR', { 
           month: 'short', 
           year: 'numeric' 
         }) === month)

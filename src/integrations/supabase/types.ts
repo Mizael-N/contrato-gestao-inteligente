@@ -69,7 +69,6 @@ export type Database = {
           contratada: string
           contratante: string
           created_at: string
-          data_assinatura: string
           data_inicio: string | null
           data_termino: string | null
           fiscal_substituto: string | null
@@ -92,7 +91,6 @@ export type Database = {
           contratada: string
           contratante: string
           created_at?: string
-          data_assinatura: string
           data_inicio?: string | null
           data_termino?: string | null
           fiscal_substituto?: string | null
@@ -115,7 +113,6 @@ export type Database = {
           contratada?: string
           contratante?: string
           created_at?: string
-          data_assinatura?: string
           data_inicio?: string | null
           data_termino?: string | null
           fiscal_substituto?: string | null
