@@ -1,4 +1,3 @@
-
 export interface Contract {
   id: string;
   numero: string;
@@ -6,9 +5,8 @@ export interface Contract {
   contratante: string;
   contratada: string;
   valor: number;
-  dataAssinatura: string;
-  dataInicio: string; // Agora obrigatório - data de início da vigência
-  dataTermino: string; // Agora obrigatório - data de término da vigência
+  dataInicio: string; // Data de início da vigência (obrigatório)
+  dataTermino: string; // Data de término da vigência (obrigatório)
   prazoExecucao: number;
   prazoUnidade: string;
   modalidade: 'pregao' | 'concorrencia' | 'tomada_precos' | 'convite' | 'concurso' | 'leilao';

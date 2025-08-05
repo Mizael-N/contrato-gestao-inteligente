@@ -11,7 +11,6 @@ interface BasicInfoFormProps {
     contratante: string;
     contratada: string;
     valor: number;
-    dataAssinatura: string;
     dataInicio: string;
     dataTermino: string;
     prazoExecucao: number;
@@ -121,45 +120,6 @@ export default function BasicInfoForm({ formData, onChange }: BasicInfoFormProps
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div>
-          <Label htmlFor="dataAssinatura">Data de Assinatura *</Label>
-          <Input
-            id="dataAssinatura"
-            type="date"
-            value={formData.dataAssinatura}
-            onChange={(e) => onChange('dataAssinatura', e.target.value)}
-            required
-          />
-        </div>
-        <div>
-          <Label htmlFor="prazoExecucao">Prazo de Execução *</Label>
-          <Input
-            id="prazoExecucao"
-            type="number"
-            value={formData.prazoExecucao}
-            onChange={(e) => onChange('prazoExecucao', parseInt(e.target.value) || 365)}
-            required
-          />
-        </div>
-        <div>
-          <Label htmlFor="prazoUnidade">Unidade do Prazo *</Label>
-          <Select
-            value={formData.prazoUnidade}
-            onValueChange={(value) => onChange('prazoUnidade', value)}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="dias">Dias</SelectItem>
-              <SelectItem value="meses">Meses</SelectItem>
-              <SelectItem value="anos">Anos</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <Label htmlFor="dataInicio">Data de Início da Vigência *</Label>
@@ -186,6 +146,35 @@ export default function BasicInfoForm({ formData, onChange }: BasicInfoFormProps
           <p className="text-xs text-gray-500 mt-1">
             Data em que o contrato expira
           </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="prazoExecucao">Prazo de Execução *</Label>
+          <Input
+            id="prazoExecucao"
+            type="number"
+            value={formData.prazoExecucao}
+            onChange={(e) => onChange('prazoExecucao', parseInt(e.target.value) || 365)}
+            required
+          />
+        </div>
+        <div>
+          <Label htmlFor="prazoUnidade">Unidade do Prazo *</Label>
+          <Select
+            value={formData.prazoUnidade}
+            onValueChange={(value) => onChange('prazoUnidade', value)}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="dias">Dias</SelectItem>
+              <SelectItem value="meses">Meses</SelectItem>
+              <SelectItem value="anos">Anos</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 

@@ -8,7 +8,6 @@ export interface ContractDateInfo {
 }
 
 export function calculateContractDates(contract: {
-  dataAssinatura: string;
   dataInicio: string;
   dataTermino: string;
   prazoExecucao: number;
@@ -17,11 +16,11 @@ export function calculateContractDates(contract: {
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
 
-  // Usar dados diretamente do contrato - não calcular automaticamente
+  // Usar dados diretamente do contrato
   const dataInicio = contract.dataInicio;
   const dataTermino = contract.dataTermino;
 
-  // Verificar se há dados incompletos (não deveria mais acontecer com as novas regras)
+  // Verificar se há dados incompletos
   const hasIncompleteData = !dataInicio || !dataTermino;
 
   // Calcular dias restantes baseado na data de término da vigência
@@ -34,7 +33,6 @@ export function calculateContractDates(contract: {
   let status: 'vigente' | 'vencendo' | 'vencido';
   
   if (hasIncompleteData) {
-    // Fallback - não deveria acontecer mais
     status = 'vigente';
   } else if (diasRestantes < 0) {
     status = 'vencido';

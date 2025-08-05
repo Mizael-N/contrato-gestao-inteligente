@@ -9,9 +9,8 @@ export interface DatabaseContract {
   contratante: string;
   contratada: string;
   valor: number;
-  data_assinatura: string;
-  data_inicio: string | null;
-  data_termino: string | null;
+  data_inicio: string;
+  data_termino: string;
   prazo_execucao: number;
   prazo_unidade: string;
   modalidade: string;
@@ -34,7 +33,6 @@ export interface DatabaseContractInsert {
   contratante: string;
   contratada: string;
   valor: number;
-  data_assinatura: string;
   data_inicio: string;
   data_termino: string;
   prazo_execucao: number;
@@ -51,7 +49,6 @@ export interface DatabaseContractUpdate {
   contratante?: string;
   contratada?: string;
   valor?: number;
-  data_assinatura?: string;
   data_inicio?: string;
   data_termino?: string;
   prazo_execucao?: number;
@@ -63,8 +60,8 @@ export interface DatabaseContractUpdate {
 
 // Transformar dados do banco para a interface Contract
 export function transformDatabaseToContract(dbContract: DatabaseContract): Contract {
-  // data_inicio é obrigatória - usar data_assinatura como fallback
-  const dataInicio = dbContract.data_inicio || dbContract.data_assinatura;
+  // data_inicio é obrigatória
+  const dataInicio = dbContract.data_inicio;
   
   // Calcular data_termino se não existir (1 ano de vigência por padrão)
   let dataTermino = dbContract.data_termino;
@@ -82,7 +79,6 @@ export function transformDatabaseToContract(dbContract: DatabaseContract): Contr
     contratante: dbContract.contratante,
     contratada: dbContract.contratada,
     valor: dbContract.valor,
-    dataAssinatura: dbContract.data_assinatura,
     dataInicio: dataInicio,
     dataTermino: dataTermino,
     prazoExecucao: dbContract.prazo_execucao,
@@ -105,8 +101,7 @@ export function transformContractToInsert(contract: Partial<Contract> | any): Da
     contratante: contract.contratante,
     contratada: contract.contratada,
     valor: contract.valor,
-    dataAssinatura: contract.dataAssinatura,
-    dataInicio: contract.dataInicio,
+    dataInicio: contract.dataInicio || contract.dataAssinatura, // Compatibilidade com dados antigos
     dataTermino: contract.dataTermino,
     prazoExecucao: contract.prazoExecucao,
     prazoUnidade: contract.prazoUnidade,
@@ -115,8 +110,7 @@ export function transformContractToInsert(contract: Partial<Contract> | any): Da
     observacoes: contract.observacoes
   };
 
-  // data_inicio = data_assinatura por padrão
-  const dataInicio = cleanContract.dataInicio || cleanContract.dataAssinatura || new Date().toISOString().split('T')[0];
+  const dataInicio = cleanContract.dataInicio || new Date().toISOString().split('T')[0];
   
   // Calcular data_termino se não informada (1 ano por padrão)
   let dataTermino = cleanContract.dataTermino;
@@ -133,7 +127,6 @@ export function transformContractToInsert(contract: Partial<Contract> | any): Da
     contratante: cleanContract.contratante || '',
     contratada: cleanContract.contratada || '',
     valor: cleanContract.valor || 0,
-    data_assinatura: cleanContract.dataAssinatura || new Date().toISOString().split('T')[0],
     data_inicio: dataInicio,
     data_termino: dataTermino,
     prazo_execucao: cleanContract.prazoExecucao || 365,
@@ -153,7 +146,6 @@ export function transformContractToUpdate(contract: Partial<Contract>): Database
   if (contract.contratante !== undefined) updateData.contratante = contract.contratante;
   if (contract.contratada !== undefined) updateData.contratada = contract.contratada;
   if (contract.valor !== undefined) updateData.valor = contract.valor;
-  if (contract.dataAssinatura !== undefined) updateData.data_assinatura = contract.dataAssinatura;
   if (contract.dataInicio !== undefined) updateData.data_inicio = contract.dataInicio;
   if (contract.dataTermino !== undefined) updateData.data_termino = contract.dataTermino;
   if (contract.prazoExecucao !== undefined) updateData.prazo_execucao = contract.prazoExecucao;

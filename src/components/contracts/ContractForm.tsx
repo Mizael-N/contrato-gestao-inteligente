@@ -19,8 +19,7 @@ export default function ContractForm({ contract, onSubmit, onCancel }: ContractF
     contratante: contract?.contratante || '',
     contratada: contract?.contratada || '',
     valor: contract?.valor || 0,
-    dataAssinatura: contract?.dataAssinatura || '',
-    dataInicio: contract?.dataInicio || contract?.dataAssinatura || '',
+    dataInicio: contract?.dataInicio || '',
     dataTermino: contract?.dataTermino || '',
     prazoExecucao: contract?.prazoExecucao || 365,
     prazoUnidade: contract?.prazoUnidade || 'dias',
@@ -35,11 +34,6 @@ export default function ContractForm({ contract, onSubmit, onCancel }: ContractF
 
   const handleFieldChange = (field: string, value: any) => {
     const newData = { ...formData, [field]: value };
-    
-    // Se a data de assinatura mudou e não há data de início, atualizar automaticamente
-    if (field === 'dataAssinatura' && !formData.dataInicio) {
-      newData.dataInicio = value;
-    }
     
     // Se mudou data de início ou prazo, calcular data de término automaticamente se não existir
     if ((field === 'dataInicio' || field === 'prazoExecucao' || field === 'prazoUnidade') && 
@@ -70,13 +64,8 @@ export default function ContractForm({ contract, onSubmit, onCancel }: ContractF
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Garantir que dataInicio seja definida
-    const finalData = {
-      ...formData,
-      dataInicio: formData.dataInicio || formData.dataAssinatura,
-    };
-    
     // Calcular dataTermino se não definida (1 ano por padrão)
+    const finalData = { ...formData };
     if (!finalData.dataTermino && finalData.dataInicio) {
       const inicioDate = new Date(finalData.dataInicio);
       const terminoDate = new Date(inicioDate);

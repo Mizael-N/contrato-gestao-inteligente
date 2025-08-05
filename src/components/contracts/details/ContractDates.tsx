@@ -57,13 +57,13 @@ export default function ContractDates({ contract }: ContractDatesProps) {
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Data de Assinatura</label>
-            <p className="text-sm font-medium">{formatDateBR(contract.dataAssinatura)}</p>
+            <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Data de Início da Vigência</label>
+            <p className="text-sm font-medium">{formatDateBR(dateInfo.dataInicio)}</p>
           </div>
           
           <div>
-            <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Data de Início da Vigência</label>
-            <p className="text-sm font-medium">{formatDateBR(dateInfo.dataInicio)}</p>
+            <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Data de Término da Vigência</label>
+            <p className="text-sm font-medium">{formatDateBR(dateInfo.dataTermino)}</p>
           </div>
           
           <div>
@@ -74,8 +74,10 @@ export default function ContractDates({ contract }: ContractDatesProps) {
           </div>
           
           <div>
-            <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Data de Término da Vigência</label>
-            <p className="text-sm font-medium">{formatDateBR(dateInfo.dataTermino)}</p>
+            <label className="text-sm font-medium text-gray-500 dark:text-gray-400">Duração Total</label>
+            <p className="text-sm font-medium">
+              {Math.ceil((new Date(dateInfo.dataTermino).getTime() - new Date(dateInfo.dataInicio).getTime()) / (1000 * 60 * 60 * 24))} dias
+            </p>
           </div>
         </div>
         

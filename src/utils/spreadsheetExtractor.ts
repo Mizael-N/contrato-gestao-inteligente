@@ -1,4 +1,3 @@
-
 import { Contract } from '@/types/contract';
 
 // Mapas de correspondência melhorados para identificar colunas
@@ -8,8 +7,7 @@ const FIELD_MAPPINGS = {
   contratante: ['contratante', 'orgao', 'órgão', 'cliente', 'solicitante', 'prefeitura', 'municipio', 'município', 'government', 'secretaria', 'unidade'],
   contratada: ['contratada', 'empresa', 'fornecedor', 'prestador', 'supplier', 'cnpj', 'razao social', 'razão social', 'licitante', 'vencedora'],
   valor: ['valor', 'preco', 'preço', 'price', 'amount', 'total', 'custo', 'montante', 'quantia', 'valor total', 'valor global', 'valor estimado', 'valor contratado', 'preço final', 'valor final', 'r$', 'reais'],
-  dataAssinatura: ['data assinatura', 'data contrato', 'assinatura', 'celebração', 'celebracao', 'data celebração', 'firmado', 'signed'],
-  dataInicio: ['data inicio', 'data início', 'inicio vigencia', 'início vigência', 'vigencia inicio', 'vigência início', 'data inicial', 'start', 'início execução', 'inicio execucao', 'começo vigência', 'comeco vigencia', 'eficácia', 'eficacia'],
+  dataInicio: ['data inicio', 'data início', 'inicio vigencia', 'início vigência', 'vigencia inicio', 'vigência início', 'data inicial', 'start', 'início execução', 'inicio execucao', 'começo vigência', 'comeco vigencia', 'eficácia', 'eficacia', 'assinatura', 'data assinatura', 'data contrato', 'celebração', 'celebracao', 'data celebração', 'firmado', 'signed'],
   dataTermino: ['data fim', 'data final', 'data termino', 'data término', 'fim vigencia', 'fim vigência', 'vigencia fim', 'vigência fim', 'final', 'end', 'término execução', 'termino execucao', 'vencimento', 'expira', 'validade'],
   prazoExecucao: ['prazo', 'duracao', 'duração', 'meses', 'dias', 'duration', 'vigencia', 'vigência', 'tempo', 'período', 'periodo', 'tempo execução', 'tempo execucao', 'prazo execução', 'prazo execucao'],
   modalidade: ['modalidade', 'tipo', 'licitacao', 'licitação', 'modality', 'forma', 'processo', 'categoria', 'tipo licitacao', 'tipo licitação'],
@@ -58,7 +56,7 @@ function findColumnIndex(headers: string[], fieldMappings: string[]): number {
 }
 
 function parseDate(dateValue: any): string {
-  if (!dateValue) return new Date().toISOString().split('T')[0];
+  if (!dateValue) return '';
   
   console.log(`📅 Parsing data: "${dateValue}" (tipo: ${typeof dateValue})`);
   
@@ -105,11 +103,62 @@ function parseDate(dateValue: any): string {
     return result;
   }
   
-  console.log(`⚠️ Não foi possível converter a data: ${dateValue}, usando data atual`);
-  return new Date().toISOString().split('T')[0];
+  console.log(`⚠️ Não foi possível converter a data: ${dateValue}`);
+  return '';
 }
 
-// Função melhorada para calcular prazo entre duas datas
+// Função para validar e corrigir ordem das datas
+function validateAndFixDates(dataInicio: string, dataTermino: string): { dataInicio: string; dataTermino: string } {
+  // Se ambas as datas estão vazias, usar vigência padrão de 1 ano
+  if (!dataInicio && !dataTermino) {
+    const hoje = new Date();
+    const fimVigencia = new Date(hoje);
+    fimVigencia.setFullYear(fimVigencia.getFullYear() + 1);
+    
+    return {
+      dataInicio: hoje.toISOString().split('T')[0],
+      dataTermino: fimVigencia.toISOString().split('T')[0]
+    };
+  }
+  
+  // Se só uma data existe, calcular a outra baseada em 1 ano de vigência
+  if (!dataInicio && dataTermino) {
+    const termino = new Date(dataTermino);
+    const inicio = new Date(termino);
+    inicio.setFullYear(inicio.getFullYear() - 1);
+    return {
+      dataInicio: inicio.toISOString().split('T')[0],
+      dataTermino: dataTermino
+    };
+  }
+  
+  if (dataInicio && !dataTermino) {
+    const inicio = new Date(dataInicio);
+    const termino = new Date(inicio);
+    termino.setFullYear(termino.getFullYear() + 1);
+    return {
+      dataInicio: dataInicio,
+      dataTermino: termino.toISOString().split('T')[0]
+    };
+  }
+  
+  // Se ambas existem, verificar se estão na ordem correta
+  const inicioDate = new Date(dataInicio);
+  const terminoDate = new Date(dataTermino);
+  
+  if (inicioDate > terminoDate) {
+    console.log(`⚠️ Datas invertidas detectadas! Corrigindo: ${dataInicio} <-> ${dataTermino}`);
+    // Inverter as datas
+    return {
+      dataInicio: dataTermino,
+      dataTermino: dataInicio
+    };
+  }
+  
+  // Datas estão corretas
+  return { dataInicio, dataTermino };
+}
+
 function calculatePeriodBetweenDates(startDate: string, endDate: string): { prazo: number; unidade: 'dias' | 'meses' | 'anos' } {
   const inicio = new Date(startDate);
   const fim = new Date(endDate);
@@ -290,7 +339,6 @@ export function extractContractFromSpreadsheetData(data: any[][], sheetName: str
     contratante: findColumnIndex(headers, FIELD_MAPPINGS.contratante),
     contratada: findColumnIndex(headers, FIELD_MAPPINGS.contratada),
     valor: findColumnIndex(headers, FIELD_MAPPINGS.valor),
-    dataAssinatura: findColumnIndex(headers, FIELD_MAPPINGS.dataAssinatura),
     dataInicio: findColumnIndex(headers, FIELD_MAPPINGS.dataInicio),
     dataTermino: findColumnIndex(headers, FIELD_MAPPINGS.dataTermino),
     prazoExecucao: findColumnIndex(headers, FIELD_MAPPINGS.prazoExecucao),
@@ -320,71 +368,31 @@ export function extractContractFromSpreadsheetData(data: any[][], sheetName: str
       continue;
     }
     
-    // Extrair datas
-    let dataAssinatura = columnIndexes.dataAssinatura >= 0 ? parseDate(row[columnIndexes.dataAssinatura]) : new Date().toISOString().split('T')[0];
-    let dataInicio = columnIndexes.dataInicio >= 0 ? parseDate(row[columnIndexes.dataInicio]) : '';
-    let dataTermino = columnIndexes.dataTermino >= 0 ? parseDate(row[columnIndexes.dataTermino]) : '';
+    // Extrair datas da planilha (sem usar data atual)
+    let dataInicioRaw = columnIndexes.dataInicio >= 0 ? parseDate(row[columnIndexes.dataInicio]) : '';
+    let dataTerminoRaw = columnIndexes.dataTermino >= 0 ? parseDate(row[columnIndexes.dataTermino]) : '';
     
-    // Se não temos data de início, usar data de assinatura
-    if (!dataInicio) {
-      dataInicio = dataAssinatura;
-    }
+    // Validar e corrigir ordem das datas
+    const { dataInicio, dataTermino } = validateAndFixDates(dataInicioRaw, dataTerminoRaw);
     
-    // Extrair prazo da planilha
-    const prazoValue = columnIndexes.prazoExecucao >= 0 ? parseValue(row[columnIndexes.prazoExecucao]) || 12 : 12;
-    const prazoUnidadeDetectada = detectarUnidadePrazo(columnIndexes.prazoExecucao >= 0 ? String(row[columnIndexes.prazoExecucao] || '') : '');
+    console.log(`📅 Linha ${i}: Datas finais - Início: ${dataInicio}, Término: ${dataTermino}`);
     
-    // Lógica inteligente para determinar prazo e datas
-    let finalPrazo = prazoValue;
-    let finalUnidade: 'dias' | 'meses' | 'anos' = prazoUnidadeDetectada;
+    // Calcular prazo baseado nas datas finais
+    const periodoCalculado = calculatePeriodBetweenDates(dataInicio, dataTermino);
     
-    // Se temos ambas as datas, calcular prazo real baseado nas datas
-    if (dataInicio && dataTermino) {
-      const periodoCalculado = calculatePeriodBetweenDates(dataInicio, dataTermino);
-      finalPrazo = periodoCalculado.prazo;
-      finalUnidade = periodoCalculado.unidade;
-      
-      console.log(`🎯 Linha ${i}: Prazo calculado baseado nas datas: ${finalPrazo} ${finalUnidade}`);
-    }
-    // Se só temos data início e não temos data término, usar vigência padrão de 1 ano
-    else if (dataInicio && !dataTermino) {
-      finalPrazo = 12; // 12 meses = 1 ano
-      finalUnidade = 'meses';
-      dataTermino = calculateEndDate(dataInicio, finalPrazo, finalUnidade);
-      console.log(`📅 Linha ${i}: Data término calculada com vigência padrão de 1 ano: ${dataTermino}`);
-    }
-    // Se só temos data término, calcular data início baseada no prazo padrão de 1 ano
-    else if (!dataInicio && dataTermino) {
-      finalPrazo = 12; // 12 meses = 1 ano
-      finalUnidade = 'meses';
-      // Calcular data início subtraindo o prazo da data término
-      const inicioCalculado = new Date(dataTermino);
-      inicioCalculado.setMonth(inicioCalculado.getMonth() - finalPrazo);
-      dataInicio = inicioCalculado.toISOString().split('T')[0];
-      console.log(`📅 Linha ${i}: Data início calculada com vigência padrão: ${dataInicio}`);
-    }
-    // Se não temos nenhuma das duas, usar vigência padrão de 1 ano
-    else if (!dataTermino) {
-      finalPrazo = 12; // 12 meses = 1 ano
-      finalUnidade = 'meses';
-      dataTermino = calculateEndDate(dataInicio, finalPrazo, finalUnidade);
-      console.log(`📅 Linha ${i}: Data término calculada com vigência padrão de 1 ano: ${dataTermino}`);
-    }
-
     const contract: Partial<Contract> = {
       numero: numero || `${sheetName}-LINHA-${i}`,
       objeto: objeto || 'Objeto a ser definido com base nos dados da planilha',
       contratante: columnIndexes.contratante >= 0 ? String(row[columnIndexes.contratante] || 'Órgão Público') : 'Órgão Público',
       contratada: columnIndexes.contratada >= 0 ? String(row[columnIndexes.contratada] || 'Empresa a definir') : 'Empresa a definir',
       valor: columnIndexes.valor >= 0 ? parseValue(row[columnIndexes.valor]) : 0,
-      dataAssinatura,
       dataInicio,
       dataTermino,
-      prazoExecucao: finalPrazo,
-      prazoUnidade: finalUnidade,
+      prazoExecucao: periodoCalculado.prazo,
+      prazoUnidade: periodoCalculado.unidade,
       modalidade: columnIndexes.modalidade >= 0 ? parseModalidade(row[columnIndexes.modalidade]) : 'pregao',
       status: detectarStatusPorData(dataTermino),
-      observacoes: `Extraído da aba "${sheetName}" - linha ${i}. Data início: ${dataInicio}, Data término: ${dataTermino}, Prazo: ${finalPrazo} ${finalUnidade}. Vigência padrão aplicada conforme necessário.`,
+      observacoes: `Extraído da aba "${sheetName}" - linha ${i}. Prazo calculado: ${periodoCalculado.prazo} ${periodoCalculado.unidade}.`,
       aditivos: [],
       pagamentos: [],
       documentos: []
