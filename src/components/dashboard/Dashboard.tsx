@@ -13,7 +13,15 @@ interface DashboardProps {
 
 export default function Dashboard({ contracts, loading }: DashboardProps) {
   const stats = useMemo(() => {
-    if (!contracts.length) {
+    // Validate and filter contracts
+    const validContracts = contracts.filter(contract => 
+      contract && 
+      contract.dataInicio && 
+      typeof contract.valor === 'number' && 
+      contract.status
+    );
+
+    if (!validContracts.length) {
       return {
         total: 0,
         totalValue: 0,
@@ -22,34 +30,47 @@ export default function Dashboard({ contracts, loading }: DashboardProps) {
       };
     }
 
-    const total = contracts.length;
-    const totalValue = contracts.reduce((sum, contract) => sum + contract.valor, 0);
-    const active = contracts.filter(contract => contract.status === 'vigente').length;
+    const total = validContracts.length;
+    const totalValue = validContracts.reduce((sum, contract) => sum + (contract.valor || 0), 0);
+    const active = validContracts.filter(contract => contract.status === 'vigente').length;
     
     // Calcular contratos que vencem em 30 dias
     const today = new Date();
     const thirtyDaysFromNow = new Date();
     thirtyDaysFromNow.setDate(today.getDate() + 30);
     
-    const expiringSoon = contracts.filter(contract => {
+    const expiringSoon = validContracts.filter(contract => {
       if (contract.status !== 'vigente') return false;
       
-      // Usar dataTermino se disponível, senão calcular
-      let endDate: Date;
-      if (contract.dataTermino) {
-        endDate = new Date(contract.dataTermino);
-      } else {
-        endDate = new Date(contract.dataInicio);
-        if (contract.prazoUnidade === 'anos') {
-          endDate.setFullYear(endDate.getFullYear() + contract.prazoExecucao);
-        } else if (contract.prazoUnidade === 'meses') {
-          endDate.setMonth(endDate.getMonth() + contract.prazoExecucao);
+      try {
+        // Usar dataTermino se disponível, senão calcular
+        let endDate: Date;
+        if (contract.dataTermino) {
+          endDate = new Date(contract.dataTermino);
+        } else if (contract.dataInicio && contract.prazoExecucao) {
+          endDate = new Date(contract.dataInicio);
+          const prazo = contract.prazoExecucao || 0;
+          const unidade = contract.prazoUnidade || 'dias';
+          
+          if (unidade === 'anos') {
+            endDate.setFullYear(endDate.getFullYear() + prazo);
+          } else if (unidade === 'meses') {
+            endDate.setMonth(endDate.getMonth() + prazo);
+          } else {
+            endDate.setDate(endDate.getDate() + prazo);
+          }
         } else {
-          endDate.setDate(endDate.getDate() + contract.prazoExecucao);
+          return false; // Skip if no date information
         }
+        
+        // Validate date
+        if (isNaN(endDate.getTime())) return false;
+        
+        return endDate <= thirtyDaysFromNow && endDate > today;
+      } catch (error) {
+        console.warn('Error calculating contract expiration:', error);
+        return false;
       }
-      
-      return endDate <= thirtyDaysFromNow && endDate > today;
     }).length;
 
     return { total, totalValue, active, expiringSoon };
@@ -117,7 +138,7 @@ export default function Dashboard({ contracts, loading }: DashboardProps) {
                 { status: 'encerrado', label: 'Encerrado', color: 'bg-gray-500' },
                 { status: 'rescindido', label: 'Rescindido', color: 'bg-red-500' }
               ].map(({ status, label, color }) => {
-                const count = contracts.filter(c => c.status === status).length;
+                const count = contracts.filter(c => c && c.status === status).length;
                 const percentage = stats.total > 0 ? (count / stats.total) * 100 : 0;
                 
                 return (
@@ -140,10 +161,12 @@ export default function Dashboard({ contracts, loading }: DashboardProps) {
             <h3 className="text-lg font-medium mb-4">Por Modalidade</h3>
             <div className="space-y-3">
               {Object.entries(
-                contracts.reduce((acc, contract) => {
-                  acc[contract.modalidade] = (acc[contract.modalidade] || 0) + 1;
-                  return acc;
-                }, {} as Record<string, number>)
+                contracts
+                  .filter(contract => contract && contract.modalidade)
+                  .reduce((acc, contract) => {
+                    acc[contract.modalidade] = (acc[contract.modalidade] || 0) + 1;
+                    return acc;
+                  }, {} as Record<string, number>)
               ).map(([modalidade, count]) => {
                 const percentage = stats.total > 0 ? (count / stats.total) * 100 : 0;
                 const label = modalidade.replace('_', ' ').charAt(0).toUpperCase() + 
@@ -166,16 +189,28 @@ export default function Dashboard({ contracts, loading }: DashboardProps) {
             <h3 className="text-lg font-medium mb-4">Contratos por Mês</h3>
             <div className="space-y-3">
               {Object.entries(
-                contracts.reduce((acc, contract) => {
-                  const month = new Date(contract.dataInicio).toLocaleDateString('pt-BR', { 
-                    month: 'short', 
-                    year: 'numeric' 
-                  });
-                  acc[month] = (acc[month] || 0) + 1;
-                  return acc;
-                }, {} as Record<string, number>)
+                contracts
+                  .filter(contract => contract && contract.dataInicio)
+                  .reduce((acc, contract) => {
+                    try {
+                      const month = new Date(contract.dataInicio).toLocaleDateString('pt-BR', { 
+                        month: 'short', 
+                        year: 'numeric' 
+                      });
+                      acc[month] = (acc[month] || 0) + 1;
+                    } catch (error) {
+                      console.warn('Invalid date:', contract.dataInicio);
+                    }
+                    return acc;
+                  }, {} as Record<string, number>)
               )
-              .sort(([a], [b]) => new Date(a).getTime() - new Date(b).getTime())
+              .sort(([a], [b]) => {
+                try {
+                  return new Date(a).getTime() - new Date(b).getTime();
+                } catch {
+                  return 0;
+                }
+              })
               .slice(-6)
               .map(([month, count]) => (
                 <div key={month} className="flex items-center justify-between">

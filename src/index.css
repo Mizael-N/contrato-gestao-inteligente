@@ -209,7 +209,7 @@
     transform: translateY(-4px);
   }
   
-  /* Gradient backgrounds */
+  /* Gradient backgrounds - NEW UTILITY CLASSES */
   .bg-gradient-primary {
     background: var(--gradient-primary);
   }

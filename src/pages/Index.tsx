@@ -1,12 +1,38 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import { useContracts } from '@/hooks/useContracts';
+import Dashboard from '@/components/dashboard/Dashboard';
+import { useAuth } from '@/hooks/useAuth';
+import { Navigate } from 'react-router-dom';
 
 const Index = () => {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">Start building your amazing project here!</p>
+  const { user, loading: authLoading } = useAuth();
+  const { contracts, loading: contractsLoading } = useContracts();
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-lg">Carregando...</div>
       </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
+
+  return (
+    <div className="container mx-auto p-6">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-foreground mb-2">Dashboard</h1>
+        <p className="text-muted-foreground">
+          Visão geral dos contratos e métricas importantes
+        </p>
+      </div>
+      
+      <Dashboard 
+        contracts={contracts || []} 
+        loading={contractsLoading} 
+      />
     </div>
   );
 };
