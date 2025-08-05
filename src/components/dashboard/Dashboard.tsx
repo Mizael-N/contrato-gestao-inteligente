@@ -1,4 +1,3 @@
-
 import { useMemo } from 'react';
 import StatCard from './StatCard';
 import MetricsGrid from './charts/MetricsGrid';
@@ -61,7 +60,6 @@ export default function Dashboard({ contracts, loading }: DashboardProps) {
           trend={{ value: 12, isPositive: true }}
           color="text-blue-600"
           gradient="bg-blue-100"
-          loading={loading}
         />
         <StatCard
           title="Valor Total"
@@ -70,7 +68,6 @@ export default function Dashboard({ contracts, loading }: DashboardProps) {
           trend={{ value: 8, isPositive: true }}
           color="text-green-600"
           gradient="bg-green-100"
-          loading={loading}
         />
         <StatCard
           title="Contratos Ativos"
@@ -79,7 +76,6 @@ export default function Dashboard({ contracts, loading }: DashboardProps) {
           trend={{ value: Math.round((stats.active / Math.max(stats.total, 1)) * 100), isPositive: true }}
           color="text-orange-600"
           gradient="bg-orange-100"
-          loading={loading}
         />
         <StatCard
           title="Vencendo em 30 dias"
@@ -88,7 +84,6 @@ export default function Dashboard({ contracts, loading }: DashboardProps) {
           trend={{ value: stats.expiringSoon, isPositive: false }}
           color={stats.expiringSoon > 0 ? "text-red-600" : "text-gray-600"}
           gradient={stats.expiringSoon > 0 ? "bg-red-100" : "bg-gray-100"}
-          loading={loading}
         />
       </div>
 
