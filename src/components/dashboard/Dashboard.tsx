@@ -58,29 +58,36 @@ export default function Dashboard({ contracts, loading }: DashboardProps) {
           title="Total de Contratos"
           value={stats.total.toString()}
           icon={FileText}
-          trend="+12% em relação ao mês passado"
+          trend={{ value: 12, isPositive: true }}
+          color="text-blue-600"
+          gradient="bg-blue-100"
           loading={loading}
         />
         <StatCard
           title="Valor Total"
           value={`R$ ${(stats.totalValue / 1000000).toFixed(1)}M`}
           icon={DollarSign}
-          trend="+8% em relação ao mês passado"
+          trend={{ value: 8, isPositive: true }}
+          color="text-green-600"
+          gradient="bg-green-100"
           loading={loading}
         />
         <StatCard
           title="Contratos Ativos"
           value={stats.active.toString()}
           icon={Clock}
-          trend={`${((stats.active / stats.total) * 100).toFixed(0)}% do total`}
+          trend={{ value: Math.round((stats.active / Math.max(stats.total, 1)) * 100), isPositive: true }}
+          color="text-orange-600"
+          gradient="bg-orange-100"
           loading={loading}
         />
         <StatCard
           title="Vencendo em 30 dias"
           value={stats.expiringSoon.toString()}
           icon={AlertTriangle}
-          trend="Requer atenção"
-          variant={stats.expiringSoon > 0 ? "warning" : "default"}
+          trend={{ value: stats.expiringSoon, isPositive: false }}
+          color={stats.expiringSoon > 0 ? "text-red-600" : "text-gray-600"}
+          gradient={stats.expiringSoon > 0 ? "bg-red-100" : "bg-gray-100"}
           loading={loading}
         />
       </div>
