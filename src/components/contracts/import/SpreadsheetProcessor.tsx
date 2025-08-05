@@ -87,7 +87,6 @@ export const processSpreadsheet = async (
         contratante: 'Órgão Público (verificar na planilha)',
         contratada: 'Empresa Contratada (verificar na planilha)',
         valor: 50000,
-        dataAssinatura: new Date().toISOString().split('T')[0],
         dataInicio: new Date().toISOString().split('T')[0],
         dataTermino: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         prazoExecucao: 12,

@@ -69,7 +69,7 @@ CONTRATO: ${contract.numero}
 OBJETO: ${contract.objeto}
 CONTRATADA: ${contract.contratada}
 VALOR: R$ ${contract.valor?.toLocaleString('pt-BR')}
-DATA: ${contract.dataAssinatura}
+DATA INÍCIO: ${contract.dataInicio}
 PRAZO: ${contract.prazoExecucao} ${contract.prazoUnidade}
         `.trim());
       }

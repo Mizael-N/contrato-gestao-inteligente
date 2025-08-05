@@ -16,11 +16,8 @@ const getImprovedPatterns = () => ({
   contratada: /(?:contratada|empresa|fornecedor|prestador|licitante|vencedor)\s*:?\s*([^;\n]+)/i,
   objeto: /(?:objeto|descrição|descricao|serviços?|servicos?|finalidade|especificação|especificacao)\s*:?\s*([^;\n]{20,})/i,
   
-  // Padrões melhorados para datas de assinatura
-  dataAssinatura: /(?:assinatura|assinado|celebração|celebracao|firmado|data\s*do\s*contrato)\s*:?\s*(?:em\s*)?(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i,
-  
   // Padrões específicos para início da vigência
-  dataInicio: /(?:início\s*(?:da\s*)?(?:vigência|vigencia|execução|execucao|contrato)|inicio\s*(?:da\s*)?(?:vigência|vigencia|execução|execucao|contrato)|vigência\s*(?:a\s*partir\s*de|iniciada?\s*em)|vigencia\s*(?:a\s*partir\s*de|iniciada?\s*em)|execução\s*(?:a\s*partir\s*de|iniciada?\s*em)|execucao\s*(?:a\s*partir\s*de|iniciada?\s*em)|prazo\s*iniciado?\s*em|começa\s*em|inicia\s*em|eficácia\s*a\s*partir\s*de|eficacia\s*a\s*partir\s*de)\s*:?\s*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i,
+  dataInicio: /(?:início\s*(?:da\s*)?(?:vigência|vigencia|execução|execucao|contrato)|inicio\s*(?:da\s*)?(?:vigência|vigencia|execução|execucao|contrato)|vigência\s*(?:a\s*partir\s*de|iniciada?\s*em)|vigencia\s*(?:a\s*partir\s*de|iniciada?\s*em)|execução\s*(?:a\s*partir\s*de|iniciada?\s*em)|execucao\s*(?:a\s*partir\s*de|iniciada?\s*em)|prazo\s*iniciado?\s*em|começa\s*em|inicia\s*em|eficácia\s*a\s*partir\s*de|eficacia\s*a\s*partir\s*de|assinatura|assinado|celebração|celebracao|firmado|data\s*do\s*contrato)\s*:?\s*(?:em\s*)?(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i,
   
   // Padrões específicos para término da vigência
   dataTermino: /(?:término\s*(?:da\s*)?(?:vigência|vigencia|execução|execucao|contrato)|termino\s*(?:da\s*)?(?:vigência|vigencia|execução|execucao|contrato)|fim\s*(?:da\s*)?(?:vigência|vigencia|execução|execucao|contrato)|vigência\s*(?:até|encerra\s*em|finda\s*em)|vigencia\s*(?:até|encerra\s*em|finda\s*em)|execução\s*(?:até|encerra\s*em|finda\s*em)|execucao\s*(?:até|encerra\s*em|finda\s*em)|prazo\s*(?:final|limite|até)|vence\s*em|expira\s*em|validade\s*até)\s*:?\s*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i,
@@ -119,15 +116,6 @@ export const extractContractInfo = (text: string): Partial<Contract> => {
         case 'objeto':
           extractedData.objeto = match[1].trim();
           break;
-        case 'dataAssinatura':
-          const dateParts = match[1].split(/[\/\-]/);
-          if (dateParts.length === 3) {
-            const day = dateParts[0].padStart(2, '0');
-            const month = dateParts[1].padStart(2, '0');
-            const year = dateParts[2].length === 2 ? `20${dateParts[2]}` : dateParts[2];
-            extractedData.dataAssinatura = `${year}-${month}-${day}`;
-          }
-          break;
         case 'dataInicio':
           const inicioDataParts = match[1].split(/[\/\-]/);
           if (inicioDataParts.length === 3) {
@@ -182,14 +170,9 @@ export const extractContractInfo = (text: string): Partial<Contract> => {
 
   // Lógica inteligente para completar dados em falta
   
-  // Se não temos data de assinatura, usar data atual
-  if (!extractedData.dataAssinatura) {
-    extractedData.dataAssinatura = new Date().toISOString().split('T')[0];
-  }
-  
-  // Se não temos data de início, usar data de assinatura
+  // Se não temos data de início, usar data atual
   if (!extractedData.dataInicio) {
-    extractedData.dataInicio = extractedData.dataAssinatura;
+    extractedData.dataInicio = new Date().toISOString().split('T')[0];
   }
   
   // Se temos data início e término, calcular prazo real
@@ -220,10 +203,10 @@ export const extractContractInfo = (text: string): Partial<Contract> => {
       termino: extractedData.dataTermino
     });
   }
-  // Se só temos prazo, calcular data término baseada na data de início (que é igual à assinatura)
+  // Se só temos prazo, calcular data término baseada na data de início
   else if (extractedData.prazoExecucao) {
     extractedData.dataTermino = calculateEndDateFromPeriod(
-      extractedData.dataInicio || extractedData.dataAssinatura,
+      extractedData.dataInicio,
       extractedData.prazoExecucao,
       extractedData.prazoUnidade || 'dias'
     );
@@ -239,7 +222,7 @@ export const extractContractInfo = (text: string): Partial<Contract> => {
   // Se ainda não temos data de término, calcular com prazo de 1 ano por padrão
   if (!extractedData.dataTermino) {
     extractedData.dataTermino = calculateEndDateFromPeriod(
-      extractedData.dataInicio || extractedData.dataAssinatura,
+      extractedData.dataInicio,
       12, // 12 meses = 1 ano
       'meses'
     );
@@ -253,7 +236,6 @@ export const extractContractInfo = (text: string): Partial<Contract> => {
 
   console.log('📋 Dados finais extraídos:', {
     numero: extractedData.numero,
-    dataAssinatura: extractedData.dataAssinatura,
     dataInicio: extractedData.dataInicio,
     dataTermino: extractedData.dataTermino,
     prazoExecucao: extractedData.prazoExecucao,

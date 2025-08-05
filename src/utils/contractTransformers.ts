@@ -92,23 +92,31 @@ export function transformDatabaseToContract(dbContract: DatabaseContract): Contr
   };
 }
 
+// Função para limpar campos antigos que podem existir em objetos de backup
+function cleanContractData(contract: Partial<Contract> | any): Partial<Contract> {
+  // Remover campos antigos que podem estar no backup
+  const { 
+    dataAssinatura, 
+    fiscalTitular, 
+    fiscalSubstituto, 
+    garantiaTipo, 
+    garantiaValor, 
+    garantiaVencimento, 
+    ...cleanContract 
+  } = contract;
+
+  // Se existe dataAssinatura mas não dataInicio, usar dataAssinatura como dataInicio
+  if (dataAssinatura && !cleanContract.dataInicio) {
+    cleanContract.dataInicio = dataAssinatura;
+  }
+
+  return cleanContract;
+}
+
 // Transformar Contract para formato de inserção no banco
 export function transformContractToInsert(contract: Partial<Contract> | any): DatabaseContractInsert {
   // Limpar campos antigos que podem existir em backups antigos
-  const cleanContract = {
-    numero: contract.numero,
-    objeto: contract.objeto,
-    contratante: contract.contratante,
-    contratada: contract.contratada,
-    valor: contract.valor,
-    dataInicio: contract.dataInicio || contract.dataAssinatura, // Compatibilidade com dados antigos
-    dataTermino: contract.dataTermino,
-    prazoExecucao: contract.prazoExecucao,
-    prazoUnidade: contract.prazoUnidade,
-    modalidade: contract.modalidade,
-    status: contract.status,
-    observacoes: contract.observacoes
-  };
+  const cleanContract = cleanContractData(contract);
 
   const dataInicio = cleanContract.dataInicio || new Date().toISOString().split('T')[0];
   
