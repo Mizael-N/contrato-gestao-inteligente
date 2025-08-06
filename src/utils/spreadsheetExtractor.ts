@@ -1,3 +1,4 @@
+
 import { Contract } from '@/types/contract';
 
 // Mapas de correspondência mais amplos e flexíveis
@@ -108,13 +109,36 @@ function parseDate(dateValue: any): string {
     if (dateParts) {
       let [, day, month, year] = dateParts;
       
-      // Se ano tem 2 dígitos, assumir 20XX se < 50, senão 19XX
+      // CORREÇÃO: Lógica mais conservadora para anos de 2 dígitos
       if (year.length === 2) {
         const yearNum = parseInt(year);
-        year = yearNum < 50 ? '20' + year : '19' + year;
+        const currentYear = new Date().getFullYear();
+        const currentYearShort = currentYear % 100; // Ex: 2025 -> 25
+        
+        // Se o ano é maior que o ano atual + 10, assumir século passado
+        // Ex: se estamos em 2025 e encontramos ano 50, assumir 1950
+        if (yearNum > currentYearShort + 10) {
+          year = '19' + year;
+        } else {
+          year = '20' + year;
+        }
+        
+        console.log(`📅 Ano de 2 dígitos convertido: ${yearNum} -> ${year}`);
       }
       
       const result = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      
+      // Validar se a data resultante faz sentido (não é muito no futuro)
+      const parsedDate = new Date(result);
+      const currentDate = new Date();
+      const maxFutureDate = new Date();
+      maxFutureDate.setFullYear(currentDate.getFullYear() + 20); // Máximo 20 anos no futuro
+      
+      if (parsedDate > maxFutureDate) {
+        console.log(`⚠️ Data muito no futuro detectada (${result}), retornando vazio para revisão manual`);
+        return '';
+      }
+      
       console.log(`📅 Data convertida do formato brasileiro: ${dateValue} -> ${result}`);
       return result;
     }
@@ -124,6 +148,16 @@ function parseDate(dateValue: any): string {
   try {
     const date = new Date(dateValue);
     if (!isNaN(date.getTime()) && date.getFullYear() > 1900 && date.getFullYear() < 2100) {
+      // Verificar se não é muito no futuro
+      const currentDate = new Date();
+      const maxFutureDate = new Date();
+      maxFutureDate.setFullYear(currentDate.getFullYear() + 20);
+      
+      if (date > maxFutureDate) {
+        console.log(`⚠️ Data muito no futuro detectada via Date(): ${dateValue}, retornando vazio`);
+        return '';
+      }
+      
       const result = date.toISOString().split('T')[0];
       console.log(`📅 Data convertida pelo Date(): ${dateValue} -> ${result}`);
       return result;
@@ -132,7 +166,7 @@ function parseDate(dateValue: any): string {
     console.log(`⚠️ Erro ao converter data padrão: ${e}`);
   }
   
-  console.log(`⚠️ Não foi possível converter a data: ${dateValue}`);
+  console.log(`⚠️ Não foi possível converter a data: ${dateValue} - retornando vazio para preenchimento manual`);
   return '';
 }
 
@@ -343,6 +377,8 @@ export function extractContractFromSpreadsheetData(data: any[][], sheetName: str
       const dataInicio = columnIndexes.dataInicio >= 0 ? parseDate(row[columnIndexes.dataInicio]) : '';
       const dataTermino = columnIndexes.dataTermino >= 0 ? parseDate(row[columnIndexes.dataTermino]) : '';
       
+      console.log(`📅 Linha ${i}: Data início extraída: "${dataInicio}", Data término extraída: "${dataTermino}"`);
+      
       // Calcular prazo APENAS se ambas as datas estiverem disponíveis
       let prazoExecucao = 0;
       let prazoUnidade: 'dias' | 'meses' | 'anos' = 'dias';
@@ -399,7 +435,7 @@ export function extractContractFromSpreadsheetData(data: any[][], sheetName: str
       };
       
       contracts.push(contract);
-      console.log(`✅ Linha ${i}: Contrato extraído - ${contract.numero}`);
+      console.log(`✅ Linha ${i}: Contrato extraído - ${contract.numero} (Início: ${contract.dataInicio}, Término: ${contract.dataTermino})`);
       
     } catch (error) {
       console.error(`❌ Erro ao processar linha ${i}:`, error);
