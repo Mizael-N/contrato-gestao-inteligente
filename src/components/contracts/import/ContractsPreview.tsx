@@ -88,7 +88,12 @@ export default function ContractsPreview({ preview, fileType, processing, import
           {/* Barra de progresso da importação */}
           {importingContracts && progress && (
             <div className="mb-6">
-              <ImportProgressBar progress={progress} />
+              <ImportProgressBar 
+                total={progress.total}
+                processed={progress.processed}
+                current={progress.current}
+                errors={progress.errors}
+              />
             </div>
           )}
 
