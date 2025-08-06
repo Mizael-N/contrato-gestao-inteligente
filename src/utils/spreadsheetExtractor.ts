@@ -1,4 +1,3 @@
-
 import { Contract } from '@/types/contract';
 
 // Mapas de correspondência mais amplos e flexíveis
@@ -137,63 +136,16 @@ function parseDate(dateValue: any): string {
   return '';
 }
 
-function validateAndFixDates(dataInicio: string, dataTermino: string): { dataInicio: string; dataTermino: string } {
-  const hoje = new Date();
-  const hojeFmt = hoje.toISOString().split('T')[0];
-  
-  // Se ambas as datas estão vazias, usar vigência padrão de 1 ano
-  if (!dataInicio && !dataTermino) {
-    const fimVigencia = new Date(hoje);
-    fimVigencia.setFullYear(fimVigencia.getFullYear() + 1);
-    
-    return {
-      dataInicio: hojeFmt,
-      dataTermino: fimVigencia.toISOString().split('T')[0]
-    };
-  }
-  
-  // Se só uma data existe, calcular a outra baseada em 1 ano de vigência
-  if (!dataInicio && dataTermino) {
-    const termino = new Date(dataTermino);
-    const inicio = new Date(termino);
-    inicio.setFullYear(inicio.getFullYear() - 1);
-    return {
-      dataInicio: inicio.toISOString().split('T')[0],
-      dataTermino: dataTermino
-    };
-  }
-  
-  if (dataInicio && !dataTermino) {
-    const inicio = new Date(dataInicio);
-    const termino = new Date(inicio);
-    termino.setFullYear(termino.getFullYear() + 1);
-    return {
-      dataInicio: dataInicio,
-      dataTermino: termino.toISOString().split('T')[0]
-    };
-  }
-  
-  // Se ambas existem, verificar se estão na ordem correta
-  const inicioDate = new Date(dataInicio);
-  const terminoDate = new Date(dataTermino);
-  
-  if (inicioDate > terminoDate) {
-    console.log(`⚠️ Datas invertidas detectadas! Corrigindo: ${dataInicio} <-> ${dataTermino}`);
-    return {
-      dataInicio: dataTermino,
-      dataTermino: dataInicio
-    };
-  }
-  
-  return { dataInicio, dataTermino };
-}
-
 function calculatePeriodBetweenDates(startDate: string, endDate: string): { prazo: number; unidade: 'dias' | 'meses' | 'anos' } {
+  if (!startDate || !endDate) {
+    return { prazo: 0, unidade: 'dias' }; // Retornar 0 se não há datas válidas
+  }
+
   const inicio = new Date(startDate);
   const fim = new Date(endDate);
   
   if (isNaN(inicio.getTime()) || isNaN(fim.getTime())) {
-    return { prazo: 12, unidade: 'meses' };
+    return { prazo: 0, unidade: 'dias' };
   }
   
   const diffTime = fim.getTime() - inicio.getTime();
@@ -312,21 +264,6 @@ function parseModalidade(modalidade: any): 'pregao' | 'concorrencia' | 'tomada_p
   return 'pregao';
 }
 
-function detectarStatusPorData(dataTermino: string): 'vigente' | 'suspenso' | 'encerrado' | 'rescindido' {
-  if (!dataTermino) return 'vigente';
-  
-  const hoje = new Date();
-  const termino = new Date(dataTermino);
-  
-  if (isNaN(termino.getTime())) return 'vigente';
-  
-  if (termino < hoje) {
-    return 'encerrado';
-  }
-  
-  return 'vigente';
-}
-
 export function extractContractFromSpreadsheetData(data: any[][], sheetName: string): Partial<Contract>[] {
   console.log(`📊 Iniciando extração da aba "${sheetName}" com ${data.length} linhas`);
   
@@ -366,7 +303,6 @@ export function extractContractFromSpreadsheetData(data: any[][], sheetName: str
   
   if (foundEssential.length === 0) {
     console.log(`⚠️ Nenhuma coluna essencial encontrada na aba "${sheetName}". Tentando extração flexível...`);
-    // Tentar extração mais flexível usando posições fixas
     return extractWithFlexibleMapping(data, sheetName);
   }
   
@@ -388,7 +324,7 @@ export function extractContractFromSpreadsheetData(data: any[][], sheetName: str
       continue;
     }
     
-    console.log(`📝 Processando linha ${i}:`, row.slice(0, 5)); // Log primeiros 5 valores
+    console.log(`📝 Processando linha ${i}:`, row.slice(0, 5));
     
     try {
       // Extrair dados da linha
@@ -403,12 +339,46 @@ export function extractContractFromSpreadsheetData(data: any[][], sheetName: str
         continue;
       }
       
-      // Extrair e validar datas
-      let dataInicioRaw = columnIndexes.dataInicio >= 0 ? parseDate(row[columnIndexes.dataInicio]) : '';
-      let dataTerminoRaw = columnIndexes.dataTermino >= 0 ? parseDate(row[columnIndexes.dataTermino]) : '';
+      // Extrair datas APENAS se existirem na planilha - NÃO calcular automaticamente
+      const dataInicio = columnIndexes.dataInicio >= 0 ? parseDate(row[columnIndexes.dataInicio]) : '';
+      const dataTermino = columnIndexes.dataTermino >= 0 ? parseDate(row[columnIndexes.dataTermino]) : '';
       
-      const { dataInicio, dataTermino } = validateAndFixDates(dataInicioRaw, dataTerminoRaw);
-      const periodoCalculado = calculatePeriodBetweenDates(dataInicio, dataTermino);
+      // Calcular prazo APENAS se ambas as datas estiverem disponíveis
+      let prazoExecucao = 0;
+      let prazoUnidade: 'dias' | 'meses' | 'anos' = 'dias';
+      
+      if (columnIndexes.prazoExecucao >= 0) {
+        const prazoValue = String(row[columnIndexes.prazoExecucao] || '').toLowerCase();
+        const prazoMatch = prazoValue.match(/(\d+)\s*(dias?|meses?|mes|mês|anos?|ano)?/i);
+        if (prazoMatch) {
+          prazoExecucao = parseInt(prazoMatch[1]);
+          const unidade = prazoMatch[2]?.toLowerCase() || '';
+          if (unidade.includes('mes')) prazoUnidade = 'meses';
+          else if (unidade.includes('ano')) prazoUnidade = 'anos';
+          else prazoUnidade = 'dias';
+        }
+      } else if (dataInicio && dataTermino) {
+        // Só calcular prazo se ambas as datas estiverem presentes
+        const periodoCalculado = calculatePeriodBetweenDates(dataInicio, dataTermino);
+        prazoExecucao = periodoCalculado.prazo;
+        prazoUnidade = periodoCalculado.unidade;
+      }
+      
+      // Criar observações indicando campos faltantes
+      let observacoes = `Extraído da planilha "${sheetName}" - linha ${i}.`;
+      const camposFaltantes: string[] = [];
+      
+      if (!dataInicio) camposFaltantes.push('data de início');
+      if (!dataTermino) camposFaltantes.push('data de término');
+      if (prazoExecucao === 0) camposFaltantes.push('prazo de execução');
+      
+      if (camposFaltantes.length > 0) {
+        observacoes += ` ⚠️ ATENÇÃO: Preencher manualmente os seguintes campos: ${camposFaltantes.join(', ')}.`;
+      }
+      
+      if (dataInicio && dataTermino && prazoExecucao > 0) {
+        observacoes += ` Prazo calculado: ${prazoExecucao} ${prazoUnidade}.`;
+      }
       
       const contract: Partial<Contract> = {
         numero: numero || `${sheetName}-LINHA-${i}`,
@@ -416,13 +386,13 @@ export function extractContractFromSpreadsheetData(data: any[][], sheetName: str
         contratante: columnIndexes.contratante >= 0 ? String(row[columnIndexes.contratante] || '').trim() || 'Órgão Público' : 'Órgão Público',
         contratada: contratada || 'Empresa não especificada',
         valor: valor,
-        dataInicio,
-        dataTermino,
-        prazoExecucao: periodoCalculado.prazo,
-        prazoUnidade: periodoCalculado.unidade,
+        dataInicio: dataInicio, // Pode ficar vazio
+        dataTermino: dataTermino, // Pode ficar vazio
+        prazoExecucao: prazoExecucao, // Pode ficar 0
+        prazoUnidade: prazoUnidade,
         modalidade: columnIndexes.modalidade >= 0 ? parseModalidade(row[columnIndexes.modalidade]) : 'pregao',
-        status: columnIndexes.status >= 0 ? parseStatus(row[columnIndexes.status]) : detectarStatusPorData(dataTermino),
-        observacoes: `Extraído da planilha "${sheetName}" - linha ${i}. Prazo calculado: ${periodoCalculado.prazo} ${periodoCalculado.unidade}.`,
+        status: columnIndexes.status >= 0 ? parseStatus(row[columnIndexes.status]) : 'vigente',
+        observacoes,
         aditivos: [],
         pagamentos: [],
         documentos: []
@@ -446,7 +416,6 @@ function extractWithFlexibleMapping(data: any[][], sheetName: string): Partial<C
   console.log(`🔄 Tentando extração flexível para aba "${sheetName}"`);
   
   const contracts: Partial<Contract>[] = [];
-  const headers = data[0] || [];
   
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
@@ -456,23 +425,19 @@ function extractWithFlexibleMapping(data: any[][], sheetName: string): Partial<C
     const possibleData = row.filter(cell => cell && String(cell).trim() !== '');
     
     if (possibleData.length >= 2) {
-      const hoje = new Date();
-      const proximoAno = new Date(hoje);
-      proximoAno.setFullYear(proximoAno.getFullYear() + 1);
-      
       const contract: Partial<Contract> = {
         numero: String(possibleData[0] || `${sheetName}-${i}`).trim(),
         objeto: String(possibleData[1] || 'Objeto extraído da planilha').trim(),
         contratante: 'Órgão Público',
         contratada: String(possibleData[2] || 'Empresa da planilha').trim(),
-        valor: possibleData.length > 3 ? parseValue(possibleData[3]) : 50000,
-        dataInicio: hoje.toISOString().split('T')[0],
-        dataTermino: proximoAno.toISOString().split('T')[0],
-        prazoExecucao: 12,
-        prazoUnidade: 'meses',
+        valor: possibleData.length > 3 ? parseValue(possibleData[3]) : 0,
+        dataInicio: '', // Deixar vazio para preenchimento manual
+        dataTermino: '', // Deixar vazio para preenchimento manual
+        prazoExecucao: 0, // Deixar 0 para preenchimento manual
+        prazoUnidade: 'dias',
         modalidade: 'pregao',
         status: 'vigente',
-        observacoes: `Extraído da planilha "${sheetName}" usando mapeamento flexível - linha ${i}. Favor revisar os dados.`,
+        observacoes: `Extraído da planilha "${sheetName}" usando mapeamento flexível - linha ${i}. ⚠️ ATENÇÃO: Preencher manualmente as datas e prazo de execução.`,
         aditivos: [],
         pagamentos: [],
         documentos: []

@@ -1,10 +1,9 @@
 
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { FileSpreadsheet, FileText, Image, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { FileSpreadsheet, FileText, Image, CheckCircle, AlertTriangle, Calendar, Clock } from 'lucide-react';
 import { Contract } from '@/types/contract';
 import { useContractImport } from '@/hooks/useContractImport';
 import ImportProgressBar from './ImportProgressBar';
@@ -17,161 +16,177 @@ interface ContractsPreviewProps {
   onImport: (contracts: Partial<Contract>[]) => void;
 }
 
-export default function ContractsPreview({ 
-  preview, 
-  fileType, 
-  processing, 
-  importing: externalImporting,
-  onImport 
-}: ContractsPreviewProps) {
-  const [selectedContracts, setSelectedContracts] = useState<Set<number>>(new Set());
-  const { importing, progress, importContracts } = useContractImport();
-
-  if (processing || externalImporting) return null;
-  if (preview.length === 0) return null;
-
-  const toggleContract = (index: number) => {
-    const newSelected = new Set(selectedContracts);
-    if (newSelected.has(index)) {
-      newSelected.delete(index);
-    } else {
-      newSelected.add(index);
-    }
-    setSelectedContracts(newSelected);
-  };
-
-  const toggleAll = () => {
-    if (selectedContracts.size === preview.length) {
-      setSelectedContracts(new Set());
-    } else {
-      setSelectedContracts(new Set(preview.map((_, i) => i)));
-    }
-  };
+export default function ContractsPreview({ preview, fileType, processing, importing, onImport }: ContractsPreviewProps) {
+  const { importing: importingContracts, progress, importContracts } = useContractImport();
 
   const handleImport = async () => {
-    const contractsToImport = preview.filter((_, index) => selectedContracts.has(index));
-    const success = await importContracts(contractsToImport);
-    
+    const success = await importContracts(preview);
     if (success) {
-      // Limpar seleção após importação bem-sucedida
-      setSelectedContracts(new Set());
-      onImport(contractsToImport);
+      onImport(preview);
     }
   };
 
   const getFileIcon = () => {
     switch (fileType) {
-      case 'spreadsheet': return <FileSpreadsheet className="h-5 w-5" />;
-      case 'document': return <FileText className="h-5 w-5" />;
-      case 'image': return <Image className="h-5 w-5" />;
-      default: return null;
+      case 'spreadsheet': return <FileSpreadsheet className="h-4 w-4" />;
+      case 'document': return <FileText className="h-4 w-4" />;
+      case 'image': return <Image className="h-4 w-4" />;
+      default: return <CheckCircle className="h-4 w-4" />;
     }
   };
 
-  const formatCurrency = (value?: number) => {
-    if (!value) return 'R$ 0,00';
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'vigente': return 'bg-green-100 text-green-800 border-green-200';
+      case 'suspenso': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'encerrado': return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'rescindido': return 'bg-red-100 text-red-800 border-red-200';
+      default: return 'bg-blue-100 text-blue-800 border-blue-200';
+    }
   };
 
-  const getStatusBadge = (status?: string) => {
-    const statusMap = {
-      'vigente': { label: 'Vigente', variant: 'default' as const },
-      'suspenso': { label: 'Suspenso', variant: 'secondary' as const },
-      'encerrado': { label: 'Encerrado', variant: 'outline' as const },
-      'rescindido': { label: 'Rescindido', variant: 'destructive' as const }
-    };
-    
-    const statusInfo = statusMap[status as keyof typeof statusMap] || statusMap.vigente;
-    return <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>;
+  const checkMissingFields = (contract: Partial<Contract>) => {
+    const missing: string[] = [];
+    if (!contract.dataInicio) missing.push('Data de Início');
+    if (!contract.dataTermino) missing.push('Data de Término');
+    if (!contract.prazoExecucao || contract.prazoExecucao === 0) missing.push('Prazo');
+    return missing;
   };
 
-  // Se está importando, mostrar apenas a barra de progresso
-  if (importing && progress) {
-    return <ImportProgressBar {...progress} />;
-  }
+  const contractsWithMissingData = preview.filter(contract => checkMissingFields(contract).length > 0);
+
+  if (processing || importing) return null;
+
+  if (preview.length === 0) return null;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center">
-            {getFileIcon()}
-            <span className="ml-2">
-              Pré-visualização ({preview.length} contrato{preview.length !== 1 ? 's' : ''} encontrado{preview.length !== 1 ? 's' : ''})
+    <div className="space-y-6">
+      {/* Alerta para contratos com dados faltantes */}
+      {contractsWithMissingData.length > 0 && (
+        <Alert className="border-orange-200 bg-orange-50">
+          <AlertTriangle className="h-4 w-4 text-orange-600" />
+          <AlertDescription className="text-orange-800">
+            <strong>{contractsWithMissingData.length}</strong> contrato(s) precisam de preenchimento manual das datas e/ou prazos. 
+            Revise os dados antes de importar e complete as informações faltantes após a importação.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span className="flex items-center">
+              {getFileIcon()}
+              <span className="ml-2">Pré-visualização dos Contratos</span>
+              <Badge variant="secondary" className="ml-2">
+                {preview.length} contrato{preview.length !== 1 ? 's' : ''}
+              </Badge>
             </span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {/* Barra de progresso da importação */}
+          {importingContracts && progress && (
+            <div className="mb-6">
+              <ImportProgressBar progress={progress} />
+            </div>
+          )}
+
+          <div className="space-y-4 max-h-96 overflow-y-auto">
+            {preview.map((contract, index) => {
+              const missingFields = checkMissingFields(contract);
+              const hasMissingData = missingFields.length > 0;
+
+              return (
+                <div 
+                  key={index} 
+                  className={`p-4 border rounded-lg ${hasMissingData ? 'border-orange-200 bg-orange-50' : 'border-gray-200 bg-gray-50'}`}
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <h3 className="font-semibold text-lg">{contract.numero}</h3>
+                      <p className="text-sm text-gray-600 line-clamp-2">{contract.objeto}</p>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      {hasMissingData && (
+                        <Badge variant="outline" className="bg-orange-100 text-orange-800 border-orange-300">
+                          <AlertTriangle className="w-3 h-3 mr-1" />
+                          Revisar
+                        </Badge>
+                      )}
+                      <Badge className={getStatusColor(contract.status || 'vigente')}>
+                        {contract.status || 'vigente'}
+                      </Badge>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium text-gray-700">Contratada:</span>
+                      <p className="truncate">{contract.contratada}</p>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-700">Valor:</span>
+                      <p className="font-mono">R$ {contract.valor?.toLocaleString('pt-BR') || '0,00'}</p>
+                    </div>
+                    <div className="flex items-center">
+                      <Calendar className="w-4 h-4 mr-1 text-gray-500" />
+                      <span className="font-medium text-gray-700 mr-2">Início:</span>
+                      {contract.dataInicio ? (
+                        <p>{new Date(contract.dataInicio).toLocaleDateString('pt-BR')}</p>
+                      ) : (
+                        <p className="text-orange-600 font-medium">Não informado</p>
+                      )}
+                    </div>
+                    <div className="flex items-center">
+                      <Calendar className="w-4 h-4 mr-1 text-gray-500" />
+                      <span className="font-medium text-gray-700 mr-2">Término:</span>
+                      {contract.dataTermino ? (
+                        <p>{new Date(contract.dataTermino).toLocaleDateString('pt-BR')}</p>
+                      ) : (
+                        <p className="text-orange-600 font-medium">Não informado</p>
+                      )}
+                    </div>
+                    <div className="flex items-center">
+                      <Clock className="w-4 h-4 mr-1 text-gray-500" />
+                      <span className="font-medium text-gray-700 mr-2">Prazo:</span>
+                      {contract.prazoExecucao && contract.prazoExecucao > 0 ? (
+                        <p>{contract.prazoExecucao} {contract.prazoUnidade}</p>
+                      ) : (
+                        <p className="text-orange-600 font-medium">Não informado</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Mostrar campos faltantes */}
+                  {hasMissingData && (
+                    <div className="mt-3 p-2 bg-orange-100 border border-orange-200 rounded text-sm">
+                      <span className="font-medium text-orange-800">Campos para preencher: </span>
+                      <span className="text-orange-700">{missingFields.join(', ')}</span>
+                    </div>
+                  )}
+
+                  {contract.observacoes && (
+                    <div className="mt-3 text-xs text-gray-500 bg-gray-100 p-2 rounded">
+                      {contract.observacoes}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={toggleAll}
+          
+          <div className="flex justify-end mt-6">
+            <Button 
+              onClick={handleImport} 
+              disabled={importingContracts}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
             >
-              {selectedContracts.size === preview.length ? 'Desmarcar Todos' : 'Selecionar Todos'}
-            </Button>
-            <Button
-              onClick={handleImport}
-              disabled={selectedContracts.size === 0}
-              className="min-w-[120px]"
-            >
-              {selectedContracts.size === 0 
-                ? 'Selecione contratos'
-                : `Importar ${selectedContracts.size} contrato${selectedContracts.size !== 1 ? 's' : ''}`
-              }
+              {importingContracts ? 'Importando...' : `Importar ${preview.length} Contrato${preview.length !== 1 ? 's' : ''}`}
             </Button>
           </div>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="rounded-md border overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-12">
-                  <input
-                    type="checkbox"
-                    checked={selectedContracts.size === preview.length}
-                    onChange={toggleAll}
-                    className="rounded border-gray-300"
-                  />
-                </TableHead>
-                <TableHead>Número</TableHead>
-                <TableHead>Objeto</TableHead>
-                <TableHead>Contratada</TableHead>
-                <TableHead>Valor</TableHead>
-                <TableHead>Início</TableHead>
-                <TableHead>Término</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {preview.map((contract, index) => (
-                <TableRow key={index}>
-                  <TableCell>
-                    <input
-                      type="checkbox"
-                      checked={selectedContracts.has(index)}
-                      onChange={() => toggleContract(index)}
-                      className="rounded border-gray-300"
-                    />
-                  </TableCell>
-                  <TableCell className="font-medium">{contract.numero}</TableCell>
-                  <TableCell className="max-w-[200px] truncate" title={contract.objeto}>
-                    {contract.objeto}
-                  </TableCell>
-                  <TableCell>{contract.contratada}</TableCell>
-                  <TableCell>{formatCurrency(contract.valor)}</TableCell>
-                  <TableCell>{contract.dataInicio}</TableCell>
-                  <TableCell>{contract.dataTermino}</TableCell>
-                  <TableCell>{getStatusBadge(contract.status)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
