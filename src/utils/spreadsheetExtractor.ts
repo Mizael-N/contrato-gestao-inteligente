@@ -1,30 +1,38 @@
+
 import { Contract } from '@/types/contract';
 
-// Mapas de correspondência melhorados para identificar colunas
+// Mapas de correspondência mais amplos e flexíveis
 const FIELD_MAPPINGS = {
-  numero: ['numero', 'número', 'contrato', 'processo', 'num', 'nº', 'number', 'código', 'codigo', 'id', 'identificador'],
-  objeto: ['objeto', 'descrição', 'descricao', 'servico', 'serviço', 'description', 'item', 'especificação', 'especificacao', 'finalidade', 'escopo'],
-  contratante: ['contratante', 'orgao', 'órgão', 'cliente', 'solicitante', 'prefeitura', 'municipio', 'município', 'government', 'secretaria', 'unidade'],
-  contratada: ['contratada', 'empresa', 'fornecedor', 'prestador', 'supplier', 'cnpj', 'razao social', 'razão social', 'licitante', 'vencedora'],
-  valor: ['valor', 'preco', 'preço', 'price', 'amount', 'total', 'custo', 'montante', 'quantia', 'valor total', 'valor global', 'valor estimado', 'valor contratado', 'preço final', 'valor final', 'r$', 'reais'],
-  dataInicio: ['data inicio', 'data início', 'inicio vigencia', 'início vigência', 'vigencia inicio', 'vigência início', 'data inicial', 'start', 'início execução', 'inicio execucao', 'começo vigência', 'comeco vigencia', 'eficácia', 'eficacia', 'assinatura', 'data assinatura', 'data contrato', 'celebração', 'celebracao', 'data celebração', 'firmado', 'signed'],
-  dataTermino: ['data fim', 'data final', 'data termino', 'data término', 'fim vigencia', 'fim vigência', 'vigencia fim', 'vigência fim', 'final', 'end', 'término execução', 'termino execucao', 'vencimento', 'expira', 'validade'],
-  prazoExecucao: ['prazo', 'duracao', 'duração', 'meses', 'dias', 'duration', 'vigencia', 'vigência', 'tempo', 'período', 'periodo', 'tempo execução', 'tempo execucao', 'prazo execução', 'prazo execucao'],
-  modalidade: ['modalidade', 'tipo', 'licitacao', 'licitação', 'modality', 'forma', 'processo', 'categoria', 'tipo licitacao', 'tipo licitação'],
-  status: ['status', 'situacao', 'situação', 'estado', 'state', 'condição', 'condicao', 'situação atual', 'situacao atual'],
+  numero: ['numero', 'número', 'contrato', 'processo', 'num', 'nº', 'number', 'código', 'codigo', 'id', 'identificador', 'ref', 'referencia', 'referência'],
+  objeto: ['objeto', 'descrição', 'descricao', 'servico', 'serviço', 'description', 'item', 'especificação', 'especificacao', 'finalidade', 'escopo', 'atividade', 'work', 'service'],
+  contratante: ['contratante', 'orgao', 'órgão', 'cliente', 'solicitante', 'prefeitura', 'municipio', 'município', 'government', 'secretaria', 'unidade', 'client'],
+  contratada: ['contratada', 'empresa', 'fornecedor', 'prestador', 'supplier', 'cnpj', 'razao social', 'razão social', 'licitante', 'vencedora', 'contractor', 'vendor'],
+  valor: ['valor', 'preco', 'preço', 'price', 'amount', 'total', 'custo', 'montante', 'quantia', 'valor total', 'valor global', 'valor estimado', 'valor contratado', 'preço final', 'valor final', 'r$', 'reais', 'money', 'cost'],
+  dataInicio: ['data inicio', 'data início', 'inicio vigencia', 'início vigência', 'vigencia inicio', 'vigência início', 'data inicial', 'start', 'início execução', 'inicio execucao', 'começo vigência', 'comeco vigencia', 'eficácia', 'eficacia', 'assinatura', 'data assinatura', 'data contrato', 'celebração', 'celebracao', 'data celebração', 'firmado', 'signed', 'begin'],
+  dataTermino: ['data fim', 'data final', 'data termino', 'data término', 'fim vigencia', 'fim vigência', 'vigencia fim', 'vigência fim', 'final', 'end', 'término execução', 'termino execucao', 'vencimento', 'expira', 'validade', 'finish'],
+  prazoExecucao: ['prazo', 'duracao', 'duração', 'meses', 'dias', 'duration', 'vigencia', 'vigência', 'tempo', 'período', 'periodo', 'tempo execução', 'tempo execucao', 'prazo execução', 'prazo execucao', 'term'],
+  modalidade: ['modalidade', 'tipo', 'licitacao', 'licitação', 'modality', 'forma', 'processo', 'categoria', 'tipo licitacao', 'tipo licitação', 'method'],
+  status: ['status', 'situacao', 'situação', 'estado', 'state', 'condição', 'condicao', 'situação atual', 'situacao atual', 'condition'],
 };
 
 const STATUS_MAPPINGS: Record<string, 'vigente' | 'suspenso' | 'encerrado' | 'rescindido'> = {
   'vigente': 'vigente',
   'ativo': 'vigente',
   'em andamento': 'vigente',
+  'ativa': 'vigente',
+  'válido': 'vigente',
+  'valido': 'vigente',
   'suspenso': 'suspenso',
   'pausado': 'suspenso',
+  'interrompido': 'suspenso',
   'encerrado': 'encerrado',
   'finalizado': 'encerrado',
   'concluído': 'encerrado',
+  'concluido': 'encerrado',
+  'terminado': 'encerrado',
   'rescindido': 'rescindido',
-  'cancelado': 'rescindido'
+  'cancelado': 'rescindido',
+  'anulado': 'rescindido'
 };
 
 const MODALIDADE_MAPPINGS: Record<string, 'pregao' | 'concorrencia' | 'tomada_precos' | 'convite' | 'concurso' | 'leilao'> = {
@@ -34,6 +42,8 @@ const MODALIDADE_MAPPINGS: Record<string, 'pregao' | 'concorrencia' | 'tomada_pr
   'concorrencia': 'concorrencia',
   'tomada de preços': 'tomada_precos',
   'tomada de precos': 'tomada_precos',
+  'tomada preços': 'tomada_precos',
+  'tomada precos': 'tomada_precos',
   'convite': 'convite',
   'concurso': 'concurso',
   'leilão': 'leilao',
@@ -42,16 +52,26 @@ const MODALIDADE_MAPPINGS: Record<string, 'pregao' | 'concorrencia' | 'tomada_pr
 
 function normalizeValue(value: any): string {
   if (value === null || value === undefined) return '';
-  return String(value).toLowerCase().trim();
+  return String(value).toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
 function findColumnIndex(headers: string[], fieldMappings: string[]): number {
+  console.log(`🔍 Procurando coluna para: ${fieldMappings[0]}`);
+  
   for (let i = 0; i < headers.length; i++) {
     const header = normalizeValue(headers[i]);
-    if (fieldMappings.some(mapping => header.includes(mapping))) {
-      return i;
+    console.log(`   - Testando header[${i}]: "${header}"`);
+    
+    for (const mapping of fieldMappings) {
+      const normalizedMapping = normalizeValue(mapping);
+      if (header.includes(normalizedMapping) || normalizedMapping.includes(header)) {
+        console.log(`   ✅ Match encontrado: "${header}" <-> "${normalizedMapping}"`);
+        return i;
+      }
     }
   }
+  
+  console.log(`   ❌ Nenhuma coluna encontrada para: ${fieldMappings[0]}`);
   return -1;
 }
 
@@ -67,26 +87,32 @@ function parseDate(dateValue: any): string {
   }
   
   // Se é um número (serial date do Excel)
-  if (typeof dateValue === 'number') {
-    // Excel serial date - 1 de janeiro de 1900 é 1
-    const excelEpoch = new Date(1900, 0, 1);
-    const date = new Date(excelEpoch.getTime() + (dateValue - 1) * 24 * 60 * 60 * 1000);
-    if (!isNaN(date.getTime())) {
-      const result = date.toISOString().split('T')[0];
-      console.log(`📅 Data convertida do Excel serial: ${dateValue} -> ${result}`);
-      return result;
+  if (typeof dateValue === 'number' && dateValue > 0) {
+    try {
+      // Excel serial date - 1 de janeiro de 1900 é 1
+      const excelEpoch = new Date(1900, 0, 1);
+      const date = new Date(excelEpoch.getTime() + (dateValue - 1) * 24 * 60 * 60 * 1000);
+      if (!isNaN(date.getTime()) && date.getFullYear() > 1900 && date.getFullYear() < 2100) {
+        const result = date.toISOString().split('T')[0];
+        console.log(`📅 Data convertida do Excel serial: ${dateValue} -> ${result}`);
+        return result;
+      }
+    } catch (e) {
+      console.log(`⚠️ Erro ao converter serial date: ${e}`);
     }
   }
   
   // Formato brasileiro DD/MM/YYYY ou DD/MM/YY
   if (typeof dateValue === 'string') {
-    const dateParts = dateValue.trim().replace(/\s+/g, '').match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})$/);
+    const cleaned = dateValue.trim().replace(/\s+/g, '');
+    const dateParts = cleaned.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})$/);
     if (dateParts) {
       let [, day, month, year] = dateParts;
       
-      // Se ano tem 2 dígitos, assumir 20XX
+      // Se ano tem 2 dígitos, assumir 20XX se < 50, senão 19XX
       if (year.length === 2) {
-        year = '20' + year;
+        const yearNum = parseInt(year);
+        year = yearNum < 50 ? '20' + year : '19' + year;
       }
       
       const result = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
@@ -96,27 +122,32 @@ function parseDate(dateValue: any): string {
   }
   
   // Tentar converter formatos padrão
-  const date = new Date(dateValue);
-  if (!isNaN(date.getTime())) {
-    const result = date.toISOString().split('T')[0];
-    console.log(`📅 Data convertida pelo Date(): ${dateValue} -> ${result}`);
-    return result;
+  try {
+    const date = new Date(dateValue);
+    if (!isNaN(date.getTime()) && date.getFullYear() > 1900 && date.getFullYear() < 2100) {
+      const result = date.toISOString().split('T')[0];
+      console.log(`📅 Data convertida pelo Date(): ${dateValue} -> ${result}`);
+      return result;
+    }
+  } catch (e) {
+    console.log(`⚠️ Erro ao converter data padrão: ${e}`);
   }
   
   console.log(`⚠️ Não foi possível converter a data: ${dateValue}`);
   return '';
 }
 
-// Função para validar e corrigir ordem das datas
 function validateAndFixDates(dataInicio: string, dataTermino: string): { dataInicio: string; dataTermino: string } {
+  const hoje = new Date();
+  const hojeFmt = hoje.toISOString().split('T')[0];
+  
   // Se ambas as datas estão vazias, usar vigência padrão de 1 ano
   if (!dataInicio && !dataTermino) {
-    const hoje = new Date();
     const fimVigencia = new Date(hoje);
     fimVigencia.setFullYear(fimVigencia.getFullYear() + 1);
     
     return {
-      dataInicio: hoje.toISOString().split('T')[0],
+      dataInicio: hojeFmt,
       dataTermino: fimVigencia.toISOString().split('T')[0]
     };
   }
@@ -148,14 +179,12 @@ function validateAndFixDates(dataInicio: string, dataTermino: string): { dataIni
   
   if (inicioDate > terminoDate) {
     console.log(`⚠️ Datas invertidas detectadas! Corrigindo: ${dataInicio} <-> ${dataTermino}`);
-    // Inverter as datas
     return {
       dataInicio: dataTermino,
       dataTermino: dataInicio
     };
   }
   
-  // Datas estão corretas
   return { dataInicio, dataTermino };
 }
 
@@ -167,16 +196,14 @@ function calculatePeriodBetweenDates(startDate: string, endDate: string): { praz
     return { prazo: 12, unidade: 'meses' };
   }
   
-  // Calcular diferença em dias
   const diffTime = fim.getTime() - inicio.getTime();
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   
   console.log(`⏱️ Calculando prazo entre ${startDate} e ${endDate}: ${diffDays} dias`);
   
-  // Determinar melhor unidade baseada na duração
   if (diffDays <= 90) {
     return { prazo: diffDays, unidade: 'dias' };
-  } else if (diffDays <= 730) { // Até 2 anos, mostrar em meses
+  } else if (diffDays <= 730) {
     const diffMonths = Math.round(diffDays / 30);
     return { prazo: diffMonths, unidade: 'meses' };
   } else {
@@ -185,99 +212,81 @@ function calculatePeriodBetweenDates(startDate: string, endDate: string): { praz
   }
 }
 
-function calculateEndDate(startDate: string, prazo: number, unidade: string = 'meses'): string {
-  const start = new Date(startDate);
-  if (isNaN(start.getTime())) return startDate;
-  
-  switch (unidade.toLowerCase()) {
-    case 'dias':
-    case 'dia':
-      start.setDate(start.getDate() + prazo);
-      break;
-    case 'meses':
-    case 'mes':
-    case 'mês':
-      start.setMonth(start.getMonth() + prazo);
-      break;
-    case 'anos':
-    case 'ano':
-      start.setFullYear(start.getFullYear() + prazo);
-      break;
-    default:
-      start.setMonth(start.getMonth() + prazo); // padrão é meses
-  }
-  
-  return start.toISOString().split('T')[0];
-}
-
 function parseValue(value: any): number {
-  if (typeof value === 'number') return value;
+  if (typeof value === 'number') return Math.max(0, value);
   if (!value) return 0;
   
   const stringValue = String(value).trim();
   console.log(`💰 Parsing valor: "${stringValue}"`);
   
+  if (!stringValue) return 0;
+  
   // Detectar abreviações e converter
   let multiplier = 1;
   const lowerValue = stringValue.toLowerCase();
   
-  if (lowerValue.includes('mil') || lowerValue.includes('k')) {
+  if (lowerValue.includes('mil') || lowerValue.endsWith('k')) {
     multiplier = 1000;
-  } else if (lowerValue.includes('milhão') || lowerValue.includes('milhao') || lowerValue.includes('mi') || lowerValue.includes('m')) {
+  } else if (lowerValue.includes('milhão') || lowerValue.includes('milhao') || lowerValue.includes('mi') || lowerValue.endsWith('m')) {
     multiplier = 1000000;
-  } else if (lowerValue.includes('bilhão') || lowerValue.includes('bilhao') || lowerValue.includes('bi') || lowerValue.includes('b')) {
+  } else if (lowerValue.includes('bilhão') || lowerValue.includes('bilhao') || lowerValue.includes('bi') || lowerValue.endsWith('b')) {
     multiplier = 1000000000;
   }
   
   // Remover texto e símbolos, manter apenas números, vírgulas e pontos
   let cleanValue = stringValue
     .replace(/[^\d,.-]/g, '')
+    .replace(/^[,.-]+|[,.-]+$/g, '') // Remove vírgulas/pontos no início/fim
     .trim();
   
   if (!cleanValue) return 0;
   
   // Detectar formato brasileiro vs internacional
-  // Formato brasileiro: 1.234.567,89 ou 1234567,89
-  // Formato internacional: 1,234,567.89 ou 1234567.89
-  
   const commaCount = (cleanValue.match(/,/g) || []).length;
   const dotCount = (cleanValue.match(/\./g) || []).length;
   const lastCommaIndex = cleanValue.lastIndexOf(',');
   const lastDotIndex = cleanValue.lastIndexOf('.');
   
-  // Se tem vírgula e ponto, determinar qual é decimal
   if (commaCount > 0 && dotCount > 0) {
     if (lastCommaIndex > lastDotIndex) {
-      // Vírgula está depois do ponto: formato brasileiro (1.234.567,89)
+      // Formato brasileiro (1.234.567,89)
       cleanValue = cleanValue.replace(/\./g, '').replace(',', '.');
     } else {
-      // Ponto está depois da vírgula: formato internacional (1,234,567.89)
+      // Formato internacional (1,234,567.89)
       cleanValue = cleanValue.replace(/,/g, '');
     }
   } else if (commaCount > 0) {
-    // Só vírgula: verificar se é separador decimal ou de milhares
     const afterComma = cleanValue.substring(lastCommaIndex + 1);
     if (afterComma.length <= 2 && commaCount === 1) {
-      // Provavelmente decimal brasileiro
+      // Decimal brasileiro
       cleanValue = cleanValue.replace(',', '.');
     } else {
-      // Provavelmente separador de milhares
+      // Separador de milhares
       cleanValue = cleanValue.replace(/,/g, '');
     }
   } else if (dotCount > 1) {
-    // Múltiplos pontos: formato brasileiro de milhares (1.234.567)
-    cleanValue = cleanValue.replace(/\./g, '');
+    // Múltiplos pontos: formato brasileiro de milhares
+    const lastDotPos = cleanValue.lastIndexOf('.');
+    const afterLastDot = cleanValue.substring(lastDotPos + 1);
+    if (afterLastDot.length <= 2) {
+      // Último ponto é decimal
+      cleanValue = cleanValue.substring(0, lastDotPos).replace(/\./g, '') + '.' + afterLastDot;
+    } else {
+      // Todos são separadores de milhares
+      cleanValue = cleanValue.replace(/\./g, '');
+    }
   }
-  // Se só tem um ponto, manter como está (pode ser decimal internacional)
   
   const parsed = parseFloat(cleanValue) * multiplier;
-  const result = isNaN(parsed) ? 0 : parsed;
+  const result = isNaN(parsed) ? 0 : Math.max(0, parsed);
   
   console.log(`💰 Valor parseado: "${stringValue}" -> ${result}`);
   return result;
 }
 
 function parseStatus(status: any): 'vigente' | 'suspenso' | 'encerrado' | 'rescindido' {
+  if (!status) return 'vigente';
+  
   const normalized = normalizeValue(status);
   
   for (const [key, value] of Object.entries(STATUS_MAPPINGS)) {
@@ -290,6 +299,8 @@ function parseStatus(status: any): 'vigente' | 'suspenso' | 'encerrado' | 'resci
 }
 
 function parseModalidade(modalidade: any): 'pregao' | 'concorrencia' | 'tomada_precos' | 'convite' | 'concurso' | 'leilao' {
+  if (!modalidade) return 'pregao';
+  
   const normalized = normalizeValue(modalidade);
   
   for (const [key, value] of Object.entries(MODALIDADE_MAPPINGS)) {
@@ -301,15 +312,9 @@ function parseModalidade(modalidade: any): 'pregao' | 'concorrencia' | 'tomada_p
   return 'pregao';
 }
 
-function detectarUnidadePrazo(prazoText: string): 'dias' | 'meses' | 'anos' {
-  const texto = normalizeValue(prazoText);
-  
-  if (texto.includes('dia') || texto.includes('day')) return 'dias';
-  if (texto.includes('ano') || texto.includes('year')) return 'anos';
-  return 'meses'; // padrão
-}
-
 function detectarStatusPorData(dataTermino: string): 'vigente' | 'suspenso' | 'encerrado' | 'rescindido' {
+  if (!dataTermino) return 'vigente';
+  
   const hoje = new Date();
   const termino = new Date(dataTermino);
   
@@ -323,14 +328,21 @@ function detectarStatusPorData(dataTermino: string): 'vigente' | 'suspenso' | 'e
 }
 
 export function extractContractFromSpreadsheetData(data: any[][], sheetName: string): Partial<Contract>[] {
+  console.log(`📊 Iniciando extração da aba "${sheetName}" com ${data.length} linhas`);
+  
   if (data.length < 2) {
     console.log(`⚠️ Aba "${sheetName}" possui poucos dados (${data.length} linhas)`);
     return [];
   }
   
   // Primeira linha como cabeçalho
-  const headers = data[0].map(h => String(h || ''));
+  const headers = data[0].map(h => String(h || '').trim()).filter(h => h);
   console.log(`🔍 Cabeçalhos da aba "${sheetName}":`, headers);
+  
+  if (headers.length === 0) {
+    console.log(`❌ Nenhum cabeçalho válido encontrado na aba "${sheetName}"`);
+    return [];
+  }
   
   // Encontrar índices das colunas
   const columnIndexes = {
@@ -348,59 +360,129 @@ export function extractContractFromSpreadsheetData(data: any[][], sheetName: str
   
   console.log(`📊 Mapeamento de colunas para aba "${sheetName}":`, columnIndexes);
   
+  // Verificar se pelo menos algumas colunas essenciais foram encontradas
+  const essentialColumns = ['numero', 'objeto', 'contratada', 'valor'];
+  const foundEssential = essentialColumns.filter(col => columnIndexes[col as keyof typeof columnIndexes] >= 0);
+  
+  if (foundEssential.length === 0) {
+    console.log(`⚠️ Nenhuma coluna essencial encontrada na aba "${sheetName}". Tentando extração flexível...`);
+    // Tentar extração mais flexível usando posições fixas
+    return extractWithFlexibleMapping(data, sheetName);
+  }
+  
   const contracts: Partial<Contract>[] = [];
   
   // Processar linhas de dados (pular cabeçalho)
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
     
-    // Verificar se a linha tem dados suficientes
-    if (!row || row.length === 0 || row.every(cell => !cell || String(cell).trim() === '')) {
+    if (!row || row.length === 0) {
+      console.log(`⚠️ Linha ${i} está vazia, pulando`);
       continue;
     }
     
-    // Extrair dados da linha
-    const numero = columnIndexes.numero >= 0 ? String(row[columnIndexes.numero] || '') : `${sheetName}-${i}`;
-    const objeto = columnIndexes.objeto >= 0 ? String(row[columnIndexes.objeto] || '') : 'Objeto não identificado';
-    
-    // Só processar se tiver pelo menos número ou objeto
-    if (!numero.trim() && !objeto.trim()) {
+    // Verificar se a linha tem conteúdo útil
+    const hasContent = row.some(cell => cell && String(cell).trim() !== '');
+    if (!hasContent) {
+      console.log(`⚠️ Linha ${i} não tem conteúdo, pulando`);
       continue;
     }
     
-    // Extrair datas da planilha (sem usar data atual)
-    let dataInicioRaw = columnIndexes.dataInicio >= 0 ? parseDate(row[columnIndexes.dataInicio]) : '';
-    let dataTerminoRaw = columnIndexes.dataTermino >= 0 ? parseDate(row[columnIndexes.dataTermino]) : '';
+    console.log(`📝 Processando linha ${i}:`, row.slice(0, 5)); // Log primeiros 5 valores
     
-    // Validar e corrigir ordem das datas
-    const { dataInicio, dataTermino } = validateAndFixDates(dataInicioRaw, dataTerminoRaw);
-    
-    console.log(`📅 Linha ${i}: Datas finais - Início: ${dataInicio}, Término: ${dataTermino}`);
-    
-    // Calcular prazo baseado nas datas finais
-    const periodoCalculado = calculatePeriodBetweenDates(dataInicio, dataTermino);
-    
-    const contract: Partial<Contract> = {
-      numero: numero || `${sheetName}-LINHA-${i}`,
-      objeto: objeto || 'Objeto a ser definido com base nos dados da planilha',
-      contratante: columnIndexes.contratante >= 0 ? String(row[columnIndexes.contratante] || 'Órgão Público') : 'Órgão Público',
-      contratada: columnIndexes.contratada >= 0 ? String(row[columnIndexes.contratada] || 'Empresa a definir') : 'Empresa a definir',
-      valor: columnIndexes.valor >= 0 ? parseValue(row[columnIndexes.valor]) : 0,
-      dataInicio,
-      dataTermino,
-      prazoExecucao: periodoCalculado.prazo,
-      prazoUnidade: periodoCalculado.unidade,
-      modalidade: columnIndexes.modalidade >= 0 ? parseModalidade(row[columnIndexes.modalidade]) : 'pregao',
-      status: detectarStatusPorData(dataTermino),
-      observacoes: `Extraído da aba "${sheetName}" - linha ${i}. Prazo calculado: ${periodoCalculado.prazo} ${periodoCalculado.unidade}.`,
-      aditivos: [],
-      pagamentos: [],
-      documentos: []
-    };
-    
-    contracts.push(contract);
+    try {
+      // Extrair dados da linha
+      const numero = columnIndexes.numero >= 0 ? String(row[columnIndexes.numero] || '').trim() : `${sheetName}-${i}`;
+      const objeto = columnIndexes.objeto >= 0 ? String(row[columnIndexes.objeto] || '').trim() : '';
+      const contratada = columnIndexes.contratada >= 0 ? String(row[columnIndexes.contratada] || '').trim() : '';
+      const valor = columnIndexes.valor >= 0 ? parseValue(row[columnIndexes.valor]) : 0;
+      
+      // Se não tem nem número nem objeto nem contratada, pular
+      if (!numero && !objeto && !contratada) {
+        console.log(`⚠️ Linha ${i}: Sem dados essenciais, pulando`);
+        continue;
+      }
+      
+      // Extrair e validar datas
+      let dataInicioRaw = columnIndexes.dataInicio >= 0 ? parseDate(row[columnIndexes.dataInicio]) : '';
+      let dataTerminoRaw = columnIndexes.dataTermino >= 0 ? parseDate(row[columnIndexes.dataTermino]) : '';
+      
+      const { dataInicio, dataTermino } = validateAndFixDates(dataInicioRaw, dataTerminoRaw);
+      const periodoCalculado = calculatePeriodBetweenDates(dataInicio, dataTermino);
+      
+      const contract: Partial<Contract> = {
+        numero: numero || `${sheetName}-LINHA-${i}`,
+        objeto: objeto || 'Objeto não especificado',
+        contratante: columnIndexes.contratante >= 0 ? String(row[columnIndexes.contratante] || '').trim() || 'Órgão Público' : 'Órgão Público',
+        contratada: contratada || 'Empresa não especificada',
+        valor: valor,
+        dataInicio,
+        dataTermino,
+        prazoExecucao: periodoCalculado.prazo,
+        prazoUnidade: periodoCalculado.unidade,
+        modalidade: columnIndexes.modalidade >= 0 ? parseModalidade(row[columnIndexes.modalidade]) : 'pregao',
+        status: columnIndexes.status >= 0 ? parseStatus(row[columnIndexes.status]) : detectarStatusPorData(dataTermino),
+        observacoes: `Extraído da planilha "${sheetName}" - linha ${i}. Prazo calculado: ${periodoCalculado.prazo} ${periodoCalculado.unidade}.`,
+        aditivos: [],
+        pagamentos: [],
+        documentos: []
+      };
+      
+      contracts.push(contract);
+      console.log(`✅ Linha ${i}: Contrato extraído - ${contract.numero}`);
+      
+    } catch (error) {
+      console.error(`❌ Erro ao processar linha ${i}:`, error);
+      continue;
+    }
   }
   
   console.log(`✅ Extraídos ${contracts.length} contratos da aba "${sheetName}"`);
+  return contracts;
+}
+
+// Função de extração mais flexível para quando não encontra colunas
+function extractWithFlexibleMapping(data: any[][], sheetName: string): Partial<Contract>[] {
+  console.log(`🔄 Tentando extração flexível para aba "${sheetName}"`);
+  
+  const contracts: Partial<Contract>[] = [];
+  const headers = data[0] || [];
+  
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (!row || row.length === 0) continue;
+    
+    // Tentar usar as primeiras colunas como dados essenciais
+    const possibleData = row.filter(cell => cell && String(cell).trim() !== '');
+    
+    if (possibleData.length >= 2) {
+      const hoje = new Date();
+      const proximoAno = new Date(hoje);
+      proximoAno.setFullYear(proximoAno.getFullYear() + 1);
+      
+      const contract: Partial<Contract> = {
+        numero: String(possibleData[0] || `${sheetName}-${i}`).trim(),
+        objeto: String(possibleData[1] || 'Objeto extraído da planilha').trim(),
+        contratante: 'Órgão Público',
+        contratada: String(possibleData[2] || 'Empresa da planilha').trim(),
+        valor: possibleData.length > 3 ? parseValue(possibleData[3]) : 50000,
+        dataInicio: hoje.toISOString().split('T')[0],
+        dataTermino: proximoAno.toISOString().split('T')[0],
+        prazoExecucao: 12,
+        prazoUnidade: 'meses',
+        modalidade: 'pregao',
+        status: 'vigente',
+        observacoes: `Extraído da planilha "${sheetName}" usando mapeamento flexível - linha ${i}. Favor revisar os dados.`,
+        aditivos: [],
+        pagamentos: [],
+        documentos: []
+      };
+      
+      contracts.push(contract);
+      console.log(`✅ Extração flexível linha ${i}: ${contract.numero}`);
+    }
+  }
+  
+  console.log(`✅ Extração flexível: ${contracts.length} contratos da aba "${sheetName}"`);
   return contracts;
 }
