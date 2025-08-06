@@ -1,10 +1,10 @@
 
 import { useMemo } from 'react';
-import StatCard from './StatCard';
-import MetricsGrid from './charts/MetricsGrid';
-import InteractiveCharts from './charts/InteractiveCharts';
 import { Contract } from '@/types/contract';
-import { FileText, DollarSign, Clock, AlertTriangle } from 'lucide-react';
+import DashboardStats from './DashboardStats';
+import DashboardCharts from './DashboardCharts';
+import DashboardSummary from './DashboardSummary';
+import DashboardHeader from './DashboardHeader';
 
 interface DashboardProps {
   contracts: Contract[];
@@ -13,7 +13,6 @@ interface DashboardProps {
 
 export default function Dashboard({ contracts, loading }: DashboardProps) {
   const stats = useMemo(() => {
-    // Validate and filter contracts
     const validContracts = contracts.filter(contract => 
       contract && 
       contract.dataInicio && 
@@ -26,15 +25,16 @@ export default function Dashboard({ contracts, loading }: DashboardProps) {
         total: 0,
         totalValue: 0,
         active: 0,
-        expiringSoon: 0
+        expiringSoon: 0,
+        averageValue: 0
       };
     }
 
     const total = validContracts.length;
     const totalValue = validContracts.reduce((sum, contract) => sum + (contract.valor || 0), 0);
     const active = validContracts.filter(contract => contract.status === 'vigente').length;
+    const averageValue = total > 0 ? totalValue / total : 0;
     
-    // Calcular contratos que vencem em 30 dias
     const today = new Date();
     const thirtyDaysFromNow = new Date();
     thirtyDaysFromNow.setDate(today.getDate() + 30);
@@ -43,7 +43,6 @@ export default function Dashboard({ contracts, loading }: DashboardProps) {
       if (contract.status !== 'vigente') return false;
       
       try {
-        // Usar dataTermino se disponível, senão calcular
         let endDate: Date;
         if (contract.dataTermino) {
           endDate = new Date(contract.dataTermino);
@@ -60,12 +59,10 @@ export default function Dashboard({ contracts, loading }: DashboardProps) {
             endDate.setDate(endDate.getDate() + prazo);
           }
         } else {
-          return false; // Skip if no date information
+          return false;
         }
         
-        // Validate date
         if (isNaN(endDate.getTime())) return false;
-        
         return endDate <= thirtyDaysFromNow && endDate > today;
       } catch (error) {
         console.warn('Error calculating contract expiration:', error);
@@ -73,158 +70,36 @@ export default function Dashboard({ contracts, loading }: DashboardProps) {
       }
     }).length;
 
-    return { total, totalValue, active, expiringSoon };
+    return { total, totalValue, active, expiringSoon, averageValue };
   }, [contracts]);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-lg">Carregando dashboard...</div>
+      <div className="flex items-center justify-center min-h-[600px]">
+        <div className="text-center space-y-4">
+          <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto"></div>
+          <p className="text-lg font-medium text-muted-foreground">Carregando dashboard...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Cards de Estatísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Total de Contratos"
-          value={stats.total}
-          icon={FileText}
-          trend={{ value: 12, isPositive: true }}
-          color="text-blue-600"
-          gradient="bg-blue-100"
-        />
-        <StatCard
-          title="Valor Total"
-          value={`R$ ${(stats.totalValue / 1000000).toFixed(1)}M`}
-          icon={DollarSign}
-          trend={{ value: 8, isPositive: true }}
-          color="text-green-600"
-          gradient="bg-green-100"
-        />
-        <StatCard
-          title="Contratos Ativos"
-          value={stats.active}
-          icon={Clock}
-          trend={{ value: Math.round((stats.active / Math.max(stats.total, 1)) * 100), isPositive: true }}
-          color="text-orange-600"
-          gradient="bg-orange-100"
-        />
-        <StatCard
-          title="Vencendo em 30 dias"
-          value={stats.expiringSoon}
-          icon={AlertTriangle}
-          trend={{ value: stats.expiringSoon, isPositive: false }}
-          color={stats.expiringSoon > 0 ? "text-red-600" : "text-gray-600"}
-          gradient={stats.expiringSoon > 0 ? "bg-red-100" : "bg-gray-100"}
-        />
-      </div>
-
-      {/* Métricas e Gráficos */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <MetricsGrid contracts={contracts} />
+    <div className="space-y-8 p-6 max-w-7xl mx-auto">
+      <DashboardHeader stats={stats} />
+      
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
+        {/* Main Content */}
+        <div className="xl:col-span-3 space-y-8">
+          <DashboardStats contracts={contracts} stats={stats} />
+          <DashboardCharts contracts={contracts} />
         </div>
-        <div className="space-y-6">
-          {/* Resumo por Status */}
-          <div className="bg-white rounded-lg border p-6">
-            <h3 className="text-lg font-medium mb-4">Status dos Contratos</h3>
-            <div className="space-y-3">
-              {[
-                { status: 'vigente', label: 'Vigente', color: 'bg-green-500' },
-                { status: 'suspenso', label: 'Suspenso', color: 'bg-yellow-500' },
-                { status: 'encerrado', label: 'Encerrado', color: 'bg-gray-500' },
-                { status: 'rescindido', label: 'Rescindido', color: 'bg-red-500' }
-              ].map(({ status, label, color }) => {
-                const count = contracts.filter(c => c && c.status === status).length;
-                const percentage = stats.total > 0 ? (count / stats.total) * 100 : 0;
-                
-                return (
-                  <div key={status} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-3 h-3 rounded-full ${color}`}></div>
-                      <span className="text-sm font-medium">{label}</span>
-                    </div>
-                    <div className="text-sm text-gray-500">
-                      {count} ({percentage.toFixed(0)}%)
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Contratos por Modalidade */}
-          <div className="bg-white rounded-lg border p-6">
-            <h3 className="text-lg font-medium mb-4">Por Modalidade</h3>
-            <div className="space-y-3">
-              {Object.entries(
-                contracts
-                  .filter(contract => contract && contract.modalidade)
-                  .reduce((acc, contract) => {
-                    acc[contract.modalidade] = (acc[contract.modalidade] || 0) + 1;
-                    return acc;
-                  }, {} as Record<string, number>)
-              ).map(([modalidade, count]) => {
-                const percentage = stats.total > 0 ? (count / stats.total) * 100 : 0;
-                const label = modalidade.replace('_', ' ').charAt(0).toUpperCase() + 
-                             modalidade.replace('_', ' ').slice(1);
-                
-                return (
-                  <div key={modalidade} className="flex items-center justify-between">
-                    <span className="text-sm font-medium">{label}</span>
-                    <div className="text-sm text-gray-500">
-                      {count} ({percentage.toFixed(0)}%)
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Valor por Mês */}
-          <div className="bg-white rounded-lg border p-6">
-            <h3 className="text-lg font-medium mb-4">Contratos por Mês</h3>
-            <div className="space-y-3">
-              {Object.entries(
-                contracts
-                  .filter(contract => contract && contract.dataInicio)
-                  .reduce((acc, contract) => {
-                    try {
-                      const month = new Date(contract.dataInicio).toLocaleDateString('pt-BR', { 
-                        month: 'short', 
-                        year: 'numeric' 
-                      });
-                      acc[month] = (acc[month] || 0) + 1;
-                    } catch (error) {
-                      console.warn('Invalid date:', contract.dataInicio);
-                    }
-                    return acc;
-                  }, {} as Record<string, number>)
-              )
-              .sort(([a], [b]) => {
-                try {
-                  return new Date(a).getTime() - new Date(b).getTime();
-                } catch {
-                  return 0;
-                }
-              })
-              .slice(-6)
-              .map(([month, count]) => (
-                <div key={month} className="flex items-center justify-between">
-                  <span className="text-sm font-medium">{month}</span>
-                  <span className="text-sm text-gray-500">{count}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+        
+        {/* Sidebar */}
+        <div className="xl:col-span-1">
+          <DashboardSummary contracts={contracts} stats={stats} />
         </div>
       </div>
-
-      {/* Gráficos Interativos */}
-      <InteractiveCharts contracts={contracts} />
     </div>
   );
 }
