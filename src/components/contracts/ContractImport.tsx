@@ -81,8 +81,13 @@ PRAZO: ${contract.prazoExecucao} ${contract.prazoUnidade}
     }
   };
 
-  const handleImport = () => {
-    onImport(preview);
+  // Função de callback simplificada - não mostra notificações aqui
+  const handleImportComplete = (contracts: Partial<Contract>[]) => {
+    // A notificação já é exibida pelo hook useContractImport
+    // Apenas executar callback do componente pai se necessário
+    if (contracts.length > 0) {
+      onImport(contracts);
+    }
   };
 
   const getFileIcon = () => {
@@ -119,7 +124,7 @@ PRAZO: ${contract.prazoExecucao} ${contract.prazoUnidade}
             fileType={fileType}
             processing={processing}
             importing={importing}
-            onImport={handleImport}
+            onImport={handleImportComplete}
           />
 
           <div className="flex justify-end space-x-3 pt-4">

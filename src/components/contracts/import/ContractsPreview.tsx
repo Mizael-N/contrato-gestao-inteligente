@@ -1,125 +1,177 @@
 
-import { CheckCircle, Upload } from 'lucide-react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { FileSpreadsheet, FileText, Image, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Contract } from '@/types/contract';
+import { useContractImport } from '@/hooks/useContractImport';
+import ImportProgressBar from './ImportProgressBar';
 
 interface ContractsPreviewProps {
   preview: Partial<Contract>[];
   fileType: 'spreadsheet' | 'document' | 'image' | null;
   processing: boolean;
   importing: boolean;
-  onImport: () => void;
+  onImport: (contracts: Partial<Contract>[]) => void;
 }
 
-export default function ContractsPreview({ preview, fileType, processing, importing, onImport }: ContractsPreviewProps) {
-  if (preview.length === 0 || processing || importing) return null;
+export default function ContractsPreview({ 
+  preview, 
+  fileType, 
+  processing, 
+  importing: externalImporting,
+  onImport 
+}: ContractsPreviewProps) {
+  const [selectedContracts, setSelectedContracts] = useState<Set<number>>(new Set());
+  const { importing, progress, importContracts } = useContractImport();
+
+  if (processing || externalImporting) return null;
+  if (preview.length === 0) return null;
+
+  const toggleContract = (index: number) => {
+    const newSelected = new Set(selectedContracts);
+    if (newSelected.has(index)) {
+      newSelected.delete(index);
+    } else {
+      newSelected.add(index);
+    }
+    setSelectedContracts(newSelected);
+  };
+
+  const toggleAll = () => {
+    if (selectedContracts.size === preview.length) {
+      setSelectedContracts(new Set());
+    } else {
+      setSelectedContracts(new Set(preview.map((_, i) => i)));
+    }
+  };
+
+  const handleImport = async () => {
+    const contractsToImport = preview.filter((_, index) => selectedContracts.has(index));
+    const success = await importContracts(contractsToImport);
+    
+    if (success) {
+      // Limpar seleção após importação bem-sucedida
+      setSelectedContracts(new Set());
+      onImport(contractsToImport);
+    }
+  };
+
+  const getFileIcon = () => {
+    switch (fileType) {
+      case 'spreadsheet': return <FileSpreadsheet className="h-5 w-5" />;
+      case 'document': return <FileText className="h-5 w-5" />;
+      case 'image': return <Image className="h-5 w-5" />;
+      default: return null;
+    }
+  };
+
+  const formatCurrency = (value?: number) => {
+    if (!value) return 'R$ 0,00';
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value);
+  };
+
+  const getStatusBadge = (status?: string) => {
+    const statusMap = {
+      'vigente': { label: 'Vigente', variant: 'default' as const },
+      'suspenso': { label: 'Suspenso', variant: 'secondary' as const },
+      'encerrado': { label: 'Encerrado', variant: 'outline' as const },
+      'rescindido': { label: 'Rescindido', variant: 'destructive' as const }
+    };
+    
+    const statusInfo = statusMap[status as keyof typeof statusMap] || statusMap.vigente;
+    return <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>;
+  };
+
+  // Se está importando, mostrar apenas a barra de progresso
+  if (importing && progress) {
+    return <ImportProgressBar {...progress} />;
+  }
 
   return (
-    <div>
-      <div className="flex items-center mb-3">
-        <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
-        <h3 className="font-medium">✅ {preview.length} contrato(s) processado(s) com sucesso</h3>
-      </div>
-      
-      <div className="max-h-96 overflow-auto border rounded-lg">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 sticky top-0">
-            <tr>
-              <th className="p-3 text-left font-medium">Número</th>
-              <th className="p-3 text-left font-medium">Objeto</th>
-              <th className="p-3 text-left font-medium">Contratada</th>
-              <th className="p-3 text-left font-medium">Valor</th>
-              <th className="p-3 text-left font-medium">Prazo</th>
-              <th className="p-3 text-left font-medium">Status</th>
-              <th className="p-3 text-left font-medium">Origem</th>
-            </tr>
-          </thead>
-          <tbody>
-            {preview.map((contract, index) => (
-              <tr key={index} className="border-t hover:bg-gray-50">
-                <td className="p-3 font-mono text-xs" title={contract.numero}>
-                  {contract.numero?.substring(0, 15)}...
-                </td>
-                <td className="p-3" title={contract.objeto}>
-                  {contract.objeto?.substring(0, 40)}...
-                </td>
-                <td className="p-3" title={contract.contratada}>
-                  {contract.contratada?.substring(0, 25)}...
-                </td>
-                <td className="p-3 font-medium text-green-600">
-                  R$ {contract.valor?.toLocaleString('pt-BR')}
-                </td>
-                <td className="p-3">
-                  {contract.prazoExecucao} {contract.prazoUnidade}
-                </td>
-                <td className="p-3">
-                  <span className={`px-2 py-1 rounded-full text-xs ${
-                    contract.status === 'vigente' ? 'bg-green-100 text-green-800' : 
-                    contract.status === 'encerrado' ? 'bg-gray-100 text-gray-800' :
-                    'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    {contract.status}
-                  </span>
-                </td>
-                <td className="p-3">
-                  <span className={`text-xs px-2 py-1 rounded ${
-                    fileType === 'document' ? 'bg-blue-100 text-blue-800' :
-                    fileType === 'image' ? 'bg-purple-100 text-purple-800' :
-                    'bg-green-100 text-green-800'
-                  }`}>
-                    {fileType === 'document' ? 'OCR Doc' :
-                     fileType === 'image' ? 'OCR Img' : 'Planilha'}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      
-      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div className="p-3 bg-green-50 rounded-lg">
-          <p className="text-sm text-green-700 font-medium mb-1">
-            ✅ Processamento {fileType === 'spreadsheet' ? 'de planilha' : 'com OCR'} concluído:
-          </p>
-          <ul className="text-xs text-green-600 space-y-1">
-            {fileType !== 'spreadsheet' ? (
-              <>
-                <li>• Texto extraído com reconhecimento ótico</li>
-                <li>• Campos de contrato identificados automaticamente</li>
-                <li>• Dados normalizados e estruturados</li>
-                <li>• Informações validadas e corrigidas</li>
-              </>
-            ) : (
-              <>
-                <li>• Datas convertidas para formato padrão ISO</li>
-                <li>• Valores monetários limpos e convertidos</li>
-                <li>• Textos normalizados (quebras de linha removidas)</li>
-                <li>• TAs extraídos com prazos e status identificados</li>
-              </>
-            )}
-          </ul>
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between">
+          <div className="flex items-center">
+            {getFileIcon()}
+            <span className="ml-2">
+              Pré-visualização ({preview.length} contrato{preview.length !== 1 ? 's' : ''} encontrado{preview.length !== 1 ? 's' : ''})
+            </span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleAll}
+            >
+              {selectedContracts.size === preview.length ? 'Desmarcar Todos' : 'Selecionar Todos'}
+            </Button>
+            <Button
+              onClick={handleImport}
+              disabled={selectedContracts.size === 0}
+              className="min-w-[120px]"
+            >
+              {selectedContracts.size === 0 
+                ? 'Selecione contratos'
+                : `Importar ${selectedContracts.size} contrato${selectedContracts.size !== 1 ? 's' : ''}`
+              }
+            </Button>
+          </div>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="rounded-md border overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-12">
+                  <input
+                    type="checkbox"
+                    checked={selectedContracts.size === preview.length}
+                    onChange={toggleAll}
+                    className="rounded border-gray-300"
+                  />
+                </TableHead>
+                <TableHead>Número</TableHead>
+                <TableHead>Objeto</TableHead>
+                <TableHead>Contratada</TableHead>
+                <TableHead>Valor</TableHead>
+                <TableHead>Início</TableHead>
+                <TableHead>Término</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {preview.map((contract, index) => (
+                <TableRow key={index}>
+                  <TableCell>
+                    <input
+                      type="checkbox"
+                      checked={selectedContracts.has(index)}
+                      onChange={() => toggleContract(index)}
+                      className="rounded border-gray-300"
+                    />
+                  </TableCell>
+                  <TableCell className="font-medium">{contract.numero}</TableCell>
+                  <TableCell className="max-w-[200px] truncate" title={contract.objeto}>
+                    {contract.objeto}
+                  </TableCell>
+                  <TableCell>{contract.contratada}</TableCell>
+                  <TableCell>{formatCurrency(contract.valor)}</TableCell>
+                  <TableCell>{contract.dataInicio}</TableCell>
+                  <TableCell>{contract.dataTermino}</TableCell>
+                  <TableCell>{getStatusBadge(contract.status)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
-        
-        <div className="p-3 bg-blue-50 rounded-lg">
-          <p className="text-sm text-blue-700 font-medium mb-1">
-            ⚠️ Revisão recomendada:
-          </p>
-          <ul className="text-xs text-blue-600 space-y-1">
-            <li>• Verificar precisão dos valores extraídos</li>
-            <li>• Confirmar datas e prazos identificados</li>
-            <li>• Revisar nomes de empresas e objetos</li>
-            <li>• Ajustar campos não identificados automaticamente</li>
-          </ul>
-        </div>
-      </div>
-
-      <div className="flex justify-end mt-4">
-        <Button onClick={onImport} className="bg-green-600 hover:bg-green-700">
-          <Upload className="h-4 w-4 mr-2" />
-          Importar {preview.length} contrato(s)
-        </Button>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
