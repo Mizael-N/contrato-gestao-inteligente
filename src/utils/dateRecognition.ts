@@ -86,6 +86,17 @@ export const DATE_FORMATS = [
   'MMMM dd, yyyy', 'MMM dd, yyyy'
 ];
 
+// Interface para metadados de célula (formatação)
+export interface CellMetadata {
+  isBold?: boolean;
+  hasColor?: boolean;
+  backgroundColor?: string;
+  fontSize?: number;
+  isMerged?: boolean;
+  mergeRange?: string;
+  isHighlighted?: boolean;
+}
+
 // Função para normalizar texto de busca
 function normalizeSearchText(text: string): string {
   return text
@@ -124,7 +135,7 @@ export function detectSpreadsheetType(data: any[][], fileName: string): 'excel' 
   return 'unknown';
 }
 
-// Função avançada para parsing de datas
+// Função avançada para parsing de datas - CORRIGIDA para resolver problema de -1 dia
 export function parseAdvancedDate(value: any, spreadsheetType: string = 'unknown'): Date | null {
   if (!value) return null;
   
@@ -135,24 +146,36 @@ export function parseAdvancedDate(value: any, spreadsheetType: string = 'unknown
     return isValid(value) ? value : null;
   }
   
-  // Se é número (serial date do Excel/LibreOffice)
+  // Se é número (serial date do Excel/LibreOffice) - CORREÇÃO PRINCIPAL
   if (typeof value === 'number' && value > 0) {
     try {
       let date: Date;
       
       if (spreadsheetType === 'excel') {
-        // Excel: 1 = 1 de janeiro de 1900 (mas Excel considera 1900 bissexto erroneamente)
-        // Ajustar para essa peculiaridade
-        const excelEpoch = new Date(1899, 11, 30); // 30 de dezembro de 1899
-        date = new Date(excelEpoch.getTime() + value * 24 * 60 * 60 * 1000);
+        // Excel: 1 = 1 de janeiro de 1900 (mas Excel conta erradamente 1900 como bissexto)
+        // CORREÇÃO: Ajustar corretamente para o epoch do Excel
+        if (value > 59) {
+          // Para datas após 28/02/1900, compensar o erro do Excel
+          const excelEpoch = new Date(1899, 11, 30); // 30 de dezembro de 1899
+          date = new Date(excelEpoch.getTime() + (value - 1) * 24 * 60 * 60 * 1000);
+        } else {
+          // Para datas antes, usar diretamente
+          const excelEpoch = new Date(1899, 11, 30);
+          date = new Date(excelEpoch.getTime() + value * 24 * 60 * 60 * 1000);
+        }
       } else if (spreadsheetType === 'libreoffice') {
         // LibreOffice: 1 = 30 de dezembro de 1899
         const libreEpoch = new Date(1899, 11, 30);
-        date = new Date(libreEpoch.getTime() + (value - 1) * 24 * 60 * 60 * 1000);
+        date = new Date(libreEpoch.getTime() + value * 24 * 60 * 60 * 1000);
       } else {
-        // Tentar Excel por padrão
-        const excelEpoch = new Date(1899, 11, 30);
-        date = new Date(excelEpoch.getTime() + value * 24 * 60 * 60 * 1000);
+        // Tentar Excel por padrão com correção
+        if (value > 59) {
+          const excelEpoch = new Date(1899, 11, 30);
+          date = new Date(excelEpoch.getTime() + (value - 1) * 24 * 60 * 60 * 1000);
+        } else {
+          const excelEpoch = new Date(1899, 11, 30);
+          date = new Date(excelEpoch.getTime() + value * 24 * 60 * 60 * 1000);
+        }
       }
       
       if (isValid(date) && date.getFullYear() > 1900 && date.getFullYear() < 2100) {
@@ -214,8 +237,8 @@ export function parseAdvancedDate(value: any, spreadsheetType: string = 'unknown
   return null;
 }
 
-// Função para buscar colunas de data com score de confiança
-export function findDateColumns(headers: string[]): {
+// Função para buscar colunas de data com score de confiança - EXPANDIDA
+export function findDateColumns(headers: string[], cellMetadata?: CellMetadata[][]): {
   startDateColumns: { index: number; confidence: number; matchedTerm: string }[];
   endDateColumns: { index: number; confidence: number; matchedTerm: string }[];
 } {
@@ -227,13 +250,25 @@ export function findDateColumns(headers: string[]): {
   headers.forEach((header, index) => {
     const normalizedHeader = normalizeSearchText(String(header || ''));
     
+    // Bonus de confiança se a célula está formatada (negrito, cor, etc)
+    let formattingBonus = 0;
+    if (cellMetadata && cellMetadata[0] && cellMetadata[0][index]) {
+      const metadata = cellMetadata[0][index];
+      if (metadata.isBold) formattingBonus += 0.1;
+      if (metadata.hasColor) formattingBonus += 0.1;
+      if (metadata.isHighlighted) formattingBonus += 0.15;
+      if (metadata.isMerged) formattingBonus += 0.05;
+    }
+    
     // Buscar datas de início
     for (const synonym of START_DATE_SYNONYMS) {
       const normalizedSynonym = normalizeSearchText(synonym);
       
       if (normalizedHeader.includes(normalizedSynonym) || normalizedSynonym.includes(normalizedHeader)) {
-        const confidence = normalizedHeader === normalizedSynonym ? 1.0 : 
-                          normalizedHeader.includes(normalizedSynonym) ? 0.8 : 0.6;
+        let confidence = normalizedHeader === normalizedSynonym ? 1.0 : 
+                        normalizedHeader.includes(normalizedSynonym) ? 0.8 : 0.6;
+        
+        confidence = Math.min(1.0, confidence + formattingBonus);
         
         startDateColumns.push({
           index,
@@ -241,8 +276,8 @@ export function findDateColumns(headers: string[]): {
           matchedTerm: synonym
         });
         
-        console.log(`✅ Coluna de data INÍCIO encontrada: "${header}" (índice ${index}, confiança ${confidence}) - termo: "${synonym}"`);
-        break; // Parar na primeira correspondência para evitar duplicatas
+        console.log(`✅ Coluna de data INÍCIO encontrada: "${header}" (índice ${index}, confiança ${confidence}, formatação +${formattingBonus}) - termo: "${synonym}"`);
+        break;
       }
     }
     
@@ -251,8 +286,10 @@ export function findDateColumns(headers: string[]): {
       const normalizedSynonym = normalizeSearchText(synonym);
       
       if (normalizedHeader.includes(normalizedSynonym) || normalizedSynonym.includes(normalizedHeader)) {
-        const confidence = normalizedHeader === normalizedSynonym ? 1.0 : 
-                          normalizedHeader.includes(normalizedSynonym) ? 0.8 : 0.6;
+        let confidence = normalizedHeader === normalizedSynonym ? 1.0 : 
+                        normalizedHeader.includes(normalizedSynonym) ? 0.8 : 0.6;
+        
+        confidence = Math.min(1.0, confidence + formattingBonus);
         
         endDateColumns.push({
           index,
@@ -260,8 +297,8 @@ export function findDateColumns(headers: string[]): {
           matchedTerm: synonym
         });
         
-        console.log(`✅ Coluna de data FIM encontrada: "${header}" (índice ${index}, confiança ${confidence}) - termo: "${synonym}"`);
-        break; // Parar na primeira correspondência para evitar duplicatas
+        console.log(`✅ Coluna de data FIM encontrada: "${header}" (índice ${index}, confiança ${confidence}, formatação +${formattingBonus}) - termo: "${synonym}"`);
+        break;
       }
     }
   });
@@ -346,4 +383,64 @@ export function validateDateConsistency(startDate: Date | null, endDate: Date | 
     warnings, 
     suggestions 
   };
+}
+
+// Função para extrair metadados de célula do XLSX (formatação)
+export function extractCellMetadata(worksheet: any): CellMetadata[][] {
+  const metadata: CellMetadata[][] = [];
+  
+  if (!worksheet || !worksheet['!ref']) {
+    return metadata;
+  }
+  
+  try {
+    const range = worksheet['!ref'];
+    const decoded = { s: { c: 0, r: 0 }, e: { c: 0, r: 0 } };
+    
+    // Tentar decodificar range manualmente se necessário
+    const rangeMatch = range.match(/([A-Z]+)(\d+):([A-Z]+)(\d+)/);
+    if (rangeMatch) {
+      const [, startCol, startRow, endCol, endRow] = rangeMatch;
+      decoded.s.c = startCol.charCodeAt(0) - 65; // A=0, B=1, etc
+      decoded.s.r = parseInt(startRow) - 1;
+      decoded.e.c = endCol.charCodeAt(0) - 65;
+      decoded.e.r = parseInt(endRow) - 1;
+    }
+    
+    for (let r = decoded.s.r; r <= decoded.e.r; r++) {
+      metadata[r] = [];
+      for (let c = decoded.s.c; c <= decoded.e.c; c++) {
+        const cellAddress = String.fromCharCode(65 + c) + (r + 1);
+        const cell = worksheet[cellAddress];
+        
+        if (cell) {
+          const cellMeta: CellMetadata = {};
+          
+          // Verificar formatação se disponível
+          if (cell.s) {
+            cellMeta.isBold = cell.s.font?.bold || false;
+            cellMeta.hasColor = !!(cell.s.font?.color || cell.s.fill?.fgColor);
+            cellMeta.backgroundColor = cell.s.fill?.fgColor?.rgb;
+            cellMeta.fontSize = cell.s.font?.sz;
+          }
+          
+          // Verificar merge
+          if (worksheet['!merges']) {
+            cellMeta.isMerged = worksheet['!merges'].some((merge: any) => 
+              r >= merge.s.r && r <= merge.e.r && c >= merge.s.c && c <= merge.e.c
+            );
+          }
+          
+          // Considerar célula destacada se tem formatação especial
+          cellMeta.isHighlighted = cellMeta.isBold || cellMeta.hasColor || cellMeta.isMerged;
+          
+          metadata[r][c] = cellMeta;
+        }
+      }
+    }
+  } catch (e) {
+    console.log('⚠️ Erro ao extrair metadados de formatação:', e);
+  }
+  
+  return metadata;
 }

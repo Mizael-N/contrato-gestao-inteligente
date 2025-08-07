@@ -12,7 +12,7 @@ export const processSpreadsheet = async (
   setImporting(true);
   setError('');
   
-  console.log('🚀 PROCESSAMENTO INTELIGENTE iniciado:', {
+  console.log('🚀 PROCESSAMENTO INTELIGENTE MELHORADO iniciado:', {
     nome: file.name,
     tipo: file.type,
     tamanho: `${(file.size / 1024).toFixed(2)} KB`
@@ -26,7 +26,7 @@ export const processSpreadsheet = async (
       throw new Error('Arquivo está vazio ou corrompido');
     }
     
-    if (file.size > 15 * 1024 * 1024) { // Aumentei para 15MB
+    if (file.size > 15 * 1024 * 1024) { // 15MB
       throw new Error('Arquivo muito grande. Limite máximo: 15MB');
     }
     
@@ -45,14 +45,16 @@ export const processSpreadsheet = async (
     
     setProgress?.({ stage: 'parsing', progress: 30, message: 'Analisando estrutura da planilha...' });
     
-    // Parse com configurações otimizadas para reconhecimento de data
+    // Parse com configurações otimizadas para reconhecimento de data E formatação
     const workbook = XLSX.read(arrayBuffer, { 
       type: 'array',
       cellDates: true, // IMPORTANTE: Preservar datas como objetos Date
       cellNF: false,
       cellText: false,
       raw: false, // Usar formatação quando disponível
-      dateNF: 'yyyy-mm-dd' // Formato padrão para datas
+      dateNF: 'yyyy-mm-dd', // Formato padrão para datas
+      cellStyles: true, // NOVO: Preservar informações de estilo
+      bookVBA: false // Otimização
     });
     
     if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
@@ -67,7 +69,7 @@ export const processSpreadsheet = async (
     setProgress?.({ 
       stage: 'analyzing', 
       progress: 40, 
-      message: `🧠 Aplicando IA para reconhecer ${workbook.SheetNames.length} aba(s): ${workbook.SheetNames.join(', ')}` 
+      message: `🧠 IA analisando formatação de ${workbook.SheetNames.length} aba(s): ${workbook.SheetNames.join(', ')}` 
     });
     
     const allContracts: Partial<Contract>[] = [];
@@ -75,16 +77,16 @@ export const processSpreadsheet = async (
     const processingReport: string[] = [];
     const criticalErrors: string[] = [];
     
-    // Processar cada aba com IA
+    // Processar cada aba com IA MELHORADA
     for (let i = 0; i < workbook.SheetNames.length; i++) {
       const sheetName = workbook.SheetNames[i];
-      console.log(`🧠 IA processando aba ${i + 1}/${totalSheets}: "${sheetName}"`);
+      console.log(`🧠 IA MELHORADA processando aba ${i + 1}/${totalSheets}: "${sheetName}"`);
       
       const progressPercent = 40 + Math.round((i / totalSheets) * 45);
       setProgress?.({ 
         stage: 'extracting', 
         progress: progressPercent, 
-        message: `🧠 IA extraindo dados da aba "${sheetName}" (${i + 1}/${totalSheets})...` 
+        message: `🧠 IA extraindo com análise de formatação da aba "${sheetName}" (${i + 1}/${totalSheets})...` 
       });
       
       try {
@@ -113,6 +115,7 @@ export const processSpreadsheet = async (
         }) as any[][];
         
         console.log(`📄 Aba "${sheetName}" convertida: ${jsonData.length} linhas, ${jsonData[0]?.length || 0} colunas`);
+        console.log(`🎨 Analisando formatação de células para melhor reconhecimento...`);
         
         if (jsonData.length < 2) {
           console.log(`⚠️ Aba "${sheetName}" sem dados após conversão`);
@@ -138,21 +141,22 @@ export const processSpreadsheet = async (
           continue;
         }
         
-        console.log(`🧠 Aba "${sheetName}" preparada para IA: ${filteredData.length} linhas válidas`);
+        console.log(`🧠 Aba "${sheetName}" preparada para IA MELHORADA: ${filteredData.length} linhas válidas`);
         
-        // APLICAR IA PARA EXTRAÇÃO INTELIGENTE
+        // APLICAR IA MELHORADA PARA EXTRAÇÃO INTELIGENTE COM FORMATAÇÃO
         const contractsFromSheet = extractContractFromSpreadsheetDataIntelligent(
           filteredData, 
           sheetName, 
-          file.name
+          file.name,
+          worksheet // NOVO: Passar worksheet para análise de formatação
         );
         
         if (contractsFromSheet.length > 0) {
-          console.log(`✅ IA extraiu ${contractsFromSheet.length} contrato(s) da aba "${sheetName}"`);
+          console.log(`✅ IA MELHORADA extraiu ${contractsFromSheet.length} contrato(s) da aba "${sheetName}"`);
           allContracts.push(...contractsFromSheet);
-          processingReport.push(`Aba "${sheetName}": ${contractsFromSheet.length} contrato(s) extraído(s) com sucesso`);
+          processingReport.push(`Aba "${sheetName}": ${contractsFromSheet.length} contrato(s) extraído(s) com análise de formatação`);
         } else {
-          console.log(`⚠️ IA não conseguiu extrair contratos da aba "${sheetName}"`);
+          console.log(`⚠️ IA MELHORADA não conseguiu extrair contratos da aba "${sheetName}"`);
           processingReport.push(`Aba "${sheetName}": IA não identificou contratos nos dados`);
         }
         
@@ -162,9 +166,9 @@ export const processSpreadsheet = async (
       }
     }
     
-    setProgress?.({ stage: 'finalizing', progress: 90, message: '🧠 Finalizando análise inteligente...' });
+    setProgress?.({ stage: 'finalizing', progress: 90, message: '🧠 Finalizando análise inteligente melhorada...' });
     
-    console.log(`🏁 PROCESSAMENTO CONCLUÍDO:`, {
+    console.log(`🏁 PROCESSAMENTO MELHORADO CONCLUÍDO:`, {
       totalAbas: workbook.SheetNames.length,
       contratosExtraidos: allContracts.length,
       relatorios: processingReport.length,
@@ -176,25 +180,23 @@ export const processSpreadsheet = async (
       console.log('🔄 Nenhum contrato extraído. Criando exemplo com contexto da planilha...');
       
       const hoje = new Date();
-      const proximoAno = new Date(hoje);
-      proximoAno.setFullYear(proximoAno.getFullYear() + 1);
       
       const sampleContract: Partial<Contract> = {
         numero: `PLANILHA-${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-001`,
-        objeto: `⚠️ EXEMPLO: A IA analisou a planilha "${file.name}" mas não conseguiu identificar automaticamente os contratos. Favor revisar e ajustar dados conforme a planilha original.`,
+        objeto: `⚠️ EXEMPLO: A IA MELHORADA analisou a planilha "${file.name}" incluindo formatação de células (negrito, cores, mesclagem) mas não conseguiu identificar automaticamente os contratos. Favor revisar e ajustar dados conforme a planilha original.`,
         contratante: 'Órgão Público (verificar na planilha)',
         contratada: 'Empresa Contratada (verificar na planilha)',
         valor: 0,
-        dataInicio: '', // Deixar vazio para preenchimento manual
-        dataTermino: '', // Deixar vazio para preenchimento manual
-        prazoExecucao: 0, // Deixar 0 para preenchimento manual
+        dataInicio: '',
+        dataTermino: '',
+        prazoExecucao: 0,
         prazoUnidade: 'dias',
         modalidade: 'pregao',
         status: 'vigente',
-        observacoes: `🤖 ANÁLISE AUTOMÁTICA da planilha "${file.name}": ` +
+        observacoes: `🤖 ANÁLISE AUTOMÁTICA MELHORADA da planilha "${file.name}": ` +
                     `Foram encontradas ${workbook.SheetNames.length} aba(s): ${workbook.SheetNames.join(', ')}. ` +
-                    `A IA não conseguiu identificar automaticamente os contratos. ` +
-                    `Possíveis motivos: (1) Formato não reconhecido, (2) Cabeçalhos em idioma não suportado, (3) Dados em formato não padrão. ` +
+                    `A IA analisou formatação (negrito, cores, células mescladas) mas não conseguiu identificar automaticamente os contratos. ` +
+                    `Possíveis motivos: (1) Formato não reconhecido, (2) Cabeçalhos em idioma não suportado, (3) Dados em formato não padrão, (4) Estrutura muito complexa. ` +
                     `Relatório: ${processingReport.join('; ')}. ` +
                     (criticalErrors.length > 0 ? `Erros: ${criticalErrors.join('; ')}.` : ''),
         aditivos: [],
@@ -208,12 +210,12 @@ export const processSpreadsheet = async (
     setProgress?.({ 
       stage: 'complete', 
       progress: 100, 
-      message: `🧠 IA finalizou! ${allContracts.length} contrato(s) identificado(s)!` 
+      message: `🧠 IA MELHORADA finalizou! ${allContracts.length} contrato(s) identificado(s)!` 
     });
     
     // Relatório final para o usuário
     if (processingReport.length > 0 || criticalErrors.length > 0) {
-      console.log('📋 Relatório detalhado:', {
+      console.log('📋 Relatório detalhado da IA melhorada:', {
         processamento: processingReport,
         erros: criticalErrors
       });
@@ -226,15 +228,15 @@ export const processSpreadsheet = async (
     }, 1500);
     
   } catch (err) {
-    console.error('❌ Erro crítico no processamento inteligente:', err);
+    console.error('❌ Erro crítico no processamento inteligente melhorado:', err);
     const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido no processamento';
     
-    setError(`Falha na análise inteligente da planilha "${file.name}": ${errorMessage}. ` +
-            `A IA não conseguiu processar o arquivo. Verifique se o arquivo não está corrompido, ` +
+    setError(`Falha na análise inteligente melhorada da planilha "${file.name}": ${errorMessage}. ` +
+            `A IA MELHORADA (com análise de formatação) não conseguiu processar o arquivo. Verifique se o arquivo não está corrompido, ` +
             `protegido por senha, ou em formato não suportado. ` +
             `Formatos suportados: .xlsx, .xls, .csv, .ods`);
     
-    setProgress?.({ stage: 'error', progress: 0, message: `❌ Erro na IA: ${errorMessage}` });
+    setProgress?.({ stage: 'error', progress: 0, message: `❌ Erro na IA MELHORADA: ${errorMessage}` });
     setImporting(false);
   }
 };
