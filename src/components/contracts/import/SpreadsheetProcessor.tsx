@@ -60,7 +60,6 @@ export const processSpreadsheet = async (
       bookFiles: false, // Otimização
       bookProps: false, // Otimização
       bookSheets: true, // Manter informações das abas
-      bookSST: false, // Otimização
       password: undefined // Sem senha por padrão
     });
     

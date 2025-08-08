@@ -1,3 +1,4 @@
+
 import { Contract } from '@/types/contract';
 import { 
   detectSpreadsheetType, 
@@ -6,9 +7,7 @@ import {
   calculateContractPeriod,
   validateDateConsistency,
   extractCellMetadata,
-  CellMetadata,
-  START_DATE_SYNONYMS,
-  END_DATE_SYNONYMS
+  CellMetadata
 } from './dateRecognition';
 import { format } from 'date-fns';
 
@@ -233,7 +232,7 @@ const FIELD_MAPPINGS = {
     // Status específicos - Vigente
     'vigente', 'ativo', 'ativa', 'válido', 'valido', 'em vigor', 'em andamento',
     'executando', 'execução', 'execucao', 'corrente', 'atual', 'regular',
-    'normal', 'funcionando', 'operando', 'operacional', 'ativo', 'funcionamento',
+    'normal', 'funcionando', 'operando', 'operacional', 'funcionamento',
     'em curso', 'em desenvolvimento', 'em execução', 'em execucao',
     
     // Status específicos - Suspenso
@@ -318,7 +317,7 @@ const MODALIDADE_MAPPINGS: Record<string, 'pregao' | 'concorrencia' | 'tomada_pr
   // Pregão - expandido
   'pregão': 'pregao', 'pregao': 'pregao', 'pregão eletrônico': 'pregao', 'pregao eletronico': 'pregao',
   'pregão presencial': 'pregao', 'pregao presencial': 'pregao', 'pe': 'pregao', 'pp': 'pregao',
-  'pregao eletronico': 'pregao', 'pregao presencial': 'pregao', 'sistema registro preços': 'pregao',
+  'pregao eletronico': 'pregao', 'sistema registro preços': 'pregao',
   'sistema registro precos': 'pregao', 'srp': 'pregao', 'ata registro preços': 'pregao',
   
   // Concorrência - expandido
