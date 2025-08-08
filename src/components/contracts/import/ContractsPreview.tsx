@@ -1,15 +1,28 @@
-
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { FileSpreadsheet, FileText, Image, CheckCircle, AlertTriangle, Calendar, Clock } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+import { Download, FileSpreadsheet, AlertTriangle, Info } from 'lucide-react';
 import { Contract } from '@/types/contract';
 import { useContractImport } from '@/hooks/useContractImport';
-import ImportProgressBar from './ImportProgressBar';
+import { Progress } from "@/components/ui/progress"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 interface ContractsPreviewProps {
-  preview: Partial<Contract>[];
+  preview: {
+    contracts: Partial<Contract>[];
+    analysis: any[];
+    validation: any;
+  } | Partial<Contract>[];
   fileType: 'spreadsheet' | 'document' | 'image' | null;
   processing: boolean;
   importing: boolean;
@@ -17,181 +30,253 @@ interface ContractsPreviewProps {
 }
 
 export default function ContractsPreview({ preview, fileType, processing, importing, onImport }: ContractsPreviewProps) {
+  const [selectedContracts, setSelectedContracts] = useState<string[]>([]);
   const { importing: importingContracts, progress, importContracts } = useContractImport();
 
+  // Handle preview data structure (enhanced vs legacy)
+  const contracts = preview?.contracts || preview || [];
+  const analysis = preview?.analysis || [];
+  const validation = preview?.validation || null;
+
+  useEffect(() => {
+    if (contracts.length > 0) {
+      setSelectedContracts(contracts.map((_, index) => index.toString()));
+    }
+  }, [contracts]);
+
+  const handleSelectAll = () => {
+    if (selectedContracts.length === contracts.length) {
+      setSelectedContracts([]);
+    } else {
+      setSelectedContracts(contracts.map((_, index) => index.toString()));
+    }
+  };
+
+  const handleContractSelect = (index: string) => {
+    setSelectedContracts(prev => 
+      prev.includes(index) 
+        ? prev.filter(i => i !== index)
+        : [...prev, index]
+    );
+  };
+
   const handleImport = async () => {
-    const success = await importContracts(preview);
+    const contractsToImport = selectedContracts.map(index => contracts[parseInt(index)]);
+    const success = await importContracts(contractsToImport);
     if (success) {
-      onImport(preview);
+      onImport(contractsToImport);
     }
   };
 
-  const getFileIcon = () => {
-    switch (fileType) {
-      case 'spreadsheet': return <FileSpreadsheet className="h-4 w-4" />;
-      case 'document': return <FileText className="h-4 w-4" />;
-      case 'image': return <Image className="h-4 w-4" />;
-      default: return <CheckCircle className="h-4 w-4" />;
+  const getStatusBadge = (contract: Partial<Contract>) => {
+    const missingData = [];
+    if (!contract.dataInicio) missingData.push('Data Início');
+    if (!contract.dataTermino) missingData.push('Data Término');
+    if (!contract.valor || contract.valor === 0) missingData.push('Valor');
+    
+    if (missingData.length === 0) {
+      return <Badge variant="default" className="bg-green-100 text-green-800">Completo</Badge>;
     }
+    
+    return <Badge variant="destructive">Faltam: {missingData.join(', ')}</Badge>;
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'vigente': return 'bg-green-100 text-green-800 border-green-200';
-      case 'suspenso': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'encerrado': return 'bg-gray-100 text-gray-800 border-gray-200';
-      case 'rescindido': return 'bg-red-100 text-red-800 border-red-200';
-      default: return 'bg-blue-100 text-blue-800 border-blue-200';
-    }
-  };
+  if (processing || importing) {
+    return null;
+  }
 
-  const checkMissingFields = (contract: Partial<Contract>) => {
-    const missing: string[] = [];
-    if (!contract.dataInicio) missing.push('Data de Início');
-    if (!contract.dataTermino) missing.push('Data de Término');
-    if (!contract.prazoExecucao || contract.prazoExecucao === 0) missing.push('Prazo');
-    return missing;
-  };
-
-  const contractsWithMissingData = preview.filter(contract => checkMissingFields(contract).length > 0);
-
-  if (processing || importing) return null;
-
-  if (preview.length === 0) return null;
+  if (contracts.length === 0) {
+    return null;
+  }
 
   return (
-    <div className="space-y-6">
-      {/* Alerta para contratos com dados faltantes */}
-      {contractsWithMissingData.length > 0 && (
-        <Alert className="border-orange-200 bg-orange-50">
-          <AlertTriangle className="h-4 w-4 text-orange-600" />
-          <AlertDescription className="text-orange-800">
-            <strong>{contractsWithMissingData.length}</strong> contrato(s) precisam de preenchimento manual das datas e/ou prazos. 
-            Revise os dados antes de importar e complete as informações faltantes após a importação.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span className="flex items-center">
-              {getFileIcon()}
-              <span className="ml-2">Pré-visualização dos Contratos</span>
-              <Badge variant="secondary" className="ml-2">
-                {preview.length} contrato{preview.length !== 1 ? 's' : ''}
-              </Badge>
-            </span>
+    <Card className="mt-6">
+      <CardHeader>
+        <div className="flex flex-col space-y-4">
+          <CardTitle className="flex items-center">
+            <FileSpreadsheet className="h-5 w-5 mr-2" />
+            Preview dos Contratos ({contracts.length})
           </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {/* Barra de progresso da importação */}
-          {importingContracts && progress && (
-            <div className="mb-6">
-              <ImportProgressBar 
-                total={progress.total}
-                processed={progress.processed}
-                current={progress.current}
-                errors={progress.errors}
+          
+          {/* Enhanced Analysis Summary */}
+          {validation && (
+            <div className="space-y-2">
+              {validation.warnings.length > 0 && (
+                <Alert>
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Avisos de Análise</AlertTitle>
+                  <AlertDescription>
+                    <ul className="list-disc list-inside space-y-1">
+                      {validation.warnings.slice(0, 5).map((warning, index) => (
+                        <li key={index} className="text-sm">{warning}</li>
+                      ))}
+                      {validation.warnings.length > 5 && (
+                        <li className="text-sm text-muted-foreground">
+                          ... e mais {validation.warnings.length - 5} avisos
+                        </li>
+                      )}
+                    </ul>
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              {validation.suggestions.length > 0 && (
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertTitle>Sugestões</AlertTitle>
+                  <AlertDescription>
+                    <ul className="list-disc list-inside space-y-1">
+                      {validation.suggestions.slice(0, 3).map((suggestion, index) => (
+                        <li key={index} className="text-sm">{suggestion}</li>
+                      ))}
+                    </ul>
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+          )}
+          
+          {/* Column Analysis (if available) */}
+          {analysis.length > 0 && (
+            <div className="bg-muted p-3 rounded-md">
+              <h4 className="text-sm font-medium mb-2">Análise de Colunas</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 text-xs">
+                {analysis.slice(0, 9).map((col, index) => (
+                  <div key={index} className="flex justify-between">
+                    <span className="truncate">{col.header}</span>
+                    <span className={`ml-2 ${col.field ? 'text-green-600' : 'text-gray-400'}`}>
+                      {col.field || 'não mapeado'}
+                    </span>
+                  </div>
+                ))}
+                {analysis.length > 9 && (
+                  <div className="text-muted-foreground">
+                    ... e mais {analysis.length - 9} colunas
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </CardHeader>
+      
+      <CardContent>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                checked={selectedContracts.length === contracts.length}
+                onCheckedChange={handleSelectAll}
               />
+              <label className="text-sm font-medium">
+                Selecionar todos ({selectedContracts.length} de {contracts.length})
+              </label>
+            </div>
+            
+            {selectedContracts.length > 0 && (
+              <Button 
+                onClick={handleImport}
+                disabled={importingContracts}
+                className="flex items-center"
+              >
+                {importingContracts ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                    Importando...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4 mr-2" />
+                    Importar Selecionados
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
+
+          {/* Import Progress */}
+          {progress && (
+            <div className="space-y-2">
+              <div className="flex justify-between items-center text-sm">
+                <span>{progress.current}</span>
+                <span>{progress.processed} de {progress.total}</span>
+              </div>
+              <Progress value={(progress.processed / progress.total) * 100} />
+              {progress.errors.length > 0 && (
+                <div className="text-sm text-red-600">
+                  {progress.errors.slice(0, 3).map((error, index) => (
+                    <div key={index}>{error}</div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
-          <div className="space-y-4 max-h-96 overflow-y-auto">
-            {preview.map((contract, index) => {
-              const missingFields = checkMissingFields(contract);
-              const hasMissingData = missingFields.length > 0;
-
-              return (
-                <div 
-                  key={index} 
-                  className={`p-4 border rounded-lg ${hasMissingData ? 'border-orange-200 bg-orange-50' : 'border-gray-200 bg-gray-50'}`}
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <h3 className="font-semibold text-lg">{contract.numero}</h3>
-                      <p className="text-sm text-gray-600 line-clamp-2">{contract.objeto}</p>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      {hasMissingData && (
-                        <Badge variant="outline" className="bg-orange-100 text-orange-800 border-orange-300">
-                          <AlertTriangle className="w-3 h-3 mr-1" />
-                          Revisar
-                        </Badge>
+          {/* Contracts Table */}
+          <div className="border rounded-md">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-12">
+                    <Checkbox
+                      checked={selectedContracts.length === contracts.length}
+                      onCheckedChange={handleSelectAll}
+                    />
+                  </TableHead>
+                  <TableHead>Número</TableHead>
+                  <TableHead>Objeto</TableHead>
+                  <TableHead>Contratada</TableHead>
+                  <TableHead>Valor</TableHead>
+                  <TableHead>Data Início</TableHead>
+                  <TableHead>Data Término</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {contracts.map((contract, index) => (
+                  <TableRow key={index}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedContracts.includes(index.toString())}
+                        onCheckedChange={() => handleContractSelect(index.toString())}
+                      />
+                    </TableCell>
+                    <TableCell className="font-mono text-sm">
+                      {contract.numero}
+                    </TableCell>
+                    <TableCell>
+                      <div className="max-w-xs truncate" title={contract.objeto}>
+                        {contract.objeto}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="max-w-xs truncate" title={contract.contratada}>
+                        {contract.contratada}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {contract.valor ? `R$ ${contract.valor.toLocaleString('pt-BR')}` : '-'}
+                    </TableCell>
+                    <TableCell>
+                      {contract.dataInicio || (
+                        <span className="text-orange-600 text-xs">⚠️ Faltando</span>
                       )}
-                      <Badge className={getStatusColor(contract.status || 'vigente')}>
-                        {contract.status || 'vigente'}
-                      </Badge>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
-                    <div>
-                      <span className="font-medium text-gray-700">Contratada:</span>
-                      <p className="truncate">{contract.contratada}</p>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-700">Valor:</span>
-                      <p className="font-mono">R$ {contract.valor?.toLocaleString('pt-BR') || '0,00'}</p>
-                    </div>
-                    <div className="flex items-center">
-                      <Calendar className="w-4 h-4 mr-1 text-gray-500" />
-                      <span className="font-medium text-gray-700 mr-2">Início:</span>
-                      {contract.dataInicio ? (
-                        <p>{new Date(contract.dataInicio).toLocaleDateString('pt-BR')}</p>
-                      ) : (
-                        <p className="text-orange-600 font-medium">Não informado</p>
+                    </TableCell>
+                    <TableCell>
+                      {contract.dataTermino || (
+                        <span className="text-orange-600 text-xs">⚠️ Faltando</span>
                       )}
-                    </div>
-                    <div className="flex items-center">
-                      <Calendar className="w-4 h-4 mr-1 text-gray-500" />
-                      <span className="font-medium text-gray-700 mr-2">Término:</span>
-                      {contract.dataTermino ? (
-                        <p>{new Date(contract.dataTermino).toLocaleDateString('pt-BR')}</p>
-                      ) : (
-                        <p className="text-orange-600 font-medium">Não informado</p>
-                      )}
-                    </div>
-                    <div className="flex items-center">
-                      <Clock className="w-4 h-4 mr-1 text-gray-500" />
-                      <span className="font-medium text-gray-700 mr-2">Prazo:</span>
-                      {contract.prazoExecucao && contract.prazoExecucao > 0 ? (
-                        <p>{contract.prazoExecucao} {contract.prazoUnidade}</p>
-                      ) : (
-                        <p className="text-orange-600 font-medium">Não informado</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Mostrar campos faltantes */}
-                  {hasMissingData && (
-                    <div className="mt-3 p-2 bg-orange-100 border border-orange-200 rounded text-sm">
-                      <span className="font-medium text-orange-800">Campos para preencher: </span>
-                      <span className="text-orange-700">{missingFields.join(', ')}</span>
-                    </div>
-                  )}
-
-                  {contract.observacoes && (
-                    <div className="mt-3 text-xs text-gray-500 bg-gray-100 p-2 rounded">
-                      {contract.observacoes}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                    </TableCell>
+                    <TableCell>
+                      {getStatusBadge(contract)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
-          
-          <div className="flex justify-end mt-6">
-            <Button 
-              onClick={handleImport} 
-              disabled={importingContracts}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              {importingContracts ? 'Importando...' : `Importar ${preview.length} Contrato${preview.length !== 1 ? 's' : ''}`}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

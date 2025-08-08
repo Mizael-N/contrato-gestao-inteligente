@@ -18,7 +18,7 @@ interface ContractImportProps {
 export default function ContractImport({ onImport, onCancel }: ContractImportProps) {
   const [file, setFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
-  const [preview, setPreview] = useState<Partial<Contract>[]>([]);
+  const [preview, setPreview] = useState<any>(null); // Enhanced: can be legacy array or new object
   const [error, setError] = useState<string>('');
   const [extractedText, setExtractedText] = useState<string>('');
   const [fileType, setFileType] = useState<'spreadsheet' | 'document' | 'image' | null>(null);
@@ -32,7 +32,7 @@ export default function ContractImport({ onImport, onCancel }: ContractImportPro
       setFile(selectedFile);
       setError('');
       setExtractedText('');
-      setPreview([]);
+      setPreview(null);
       setImportProgress(null);
       
       const fileName = selectedFile.name.toLowerCase();
@@ -59,7 +59,7 @@ export default function ContractImport({ onImport, onCancel }: ContractImportPro
     try {
       setImporting(true);
       const result = await processDocument(file);
-      setPreview(result);
+      setPreview({ contracts: result, analysis: [], validation: null }); // Wrap for consistency
       
       // Simular texto extraído para demonstração
       if (result.length > 0) {
@@ -105,7 +105,7 @@ PRAZO: ${contract.prazoExecucao} ${contract.prazoUnidade}
         <CardHeader>
           <CardTitle className="flex items-center">
             {getFileIcon()}
-            <span className="ml-2">Importação Inteligente com OCR</span>
+            <span className="ml-2">Importação Inteligente com Análise de Colunas</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
