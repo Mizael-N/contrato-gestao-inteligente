@@ -1,4 +1,3 @@
-
 import { Contract } from '@/types/contract';
 import { 
   parseAdvancedDate, 
@@ -6,6 +5,7 @@ import {
   calculateContractPeriod,
   validateDateConsistency
 } from './dateRecognition';
+import { detectDateFormat, toYMD } from './dateFormatDetector';
 import { format } from 'date-fns';
 
 // Mapeamentos simplificados mas eficientes
@@ -163,39 +163,39 @@ function parseModalidade(modalidade: any): 'pregao' | 'concorrencia' | 'tomada_p
   return 'pregao';
 }
 
-// FUNÇÃO PRINCIPAL OTIMIZADA PARA MÁXIMA PRECISÃO
 export function extractContractFromSpreadsheetDataIntelligent(
   data: any[][], 
   sheetName: string, 
-  fileName: string = ''
+  fileName: string = '',
+  options: { date1904?: boolean } = {}
 ): Partial<Contract>[] {
-  console.log(`🚀 EXTRAÇÃO OTIMIZADA: Aba "${sheetName}" com ${data.length} linhas`);
+  console.log(`🚀 ENHANCED EXTRACTION: Sheet "${sheetName}" with ${data.length} rows`);
   
   if (data.length < 2) {
-    console.log(`⚠️ Dados insuficientes: ${data.length} linhas`);
+    console.log(`⚠️ Insufficient data: ${data.length} rows`);
     return [];
   }
   
-  // Análise de cabeçalhos
+  // Header analysis
   const headers = data[0].map(h => String(h || '').trim()).filter(h => h);
-  console.log(`📋 Cabeçalhos (${headers.length}):`, headers);
+  console.log(`📋 Headers (${headers.length}):`, headers);
   
   if (headers.length === 0) {
-    console.log(`❌ Nenhum cabeçalho válido`);
+    console.log(`❌ No valid headers`);
     return [];
   }
   
-  // Busca OTIMIZADA de colunas de data
-  const { startDateColumns, endDateColumns } = findDateColumns(headers);
+  // Enhanced date column detection with data analysis
+  const { startDateColumns, endDateColumns } = findDateColumns(headers, data);
   
   const bestStartColumn = startDateColumns.length > 0 ? startDateColumns[0] : null;
   const bestEndColumn = endDateColumns.length > 0 ? endDateColumns[0] : null;
   
-  console.log(`📅 Colunas de data:`);
-  console.log(`   Início: ${bestStartColumn ? `"${headers[bestStartColumn.index]}" (${bestStartColumn.confidence.toFixed(2)})` : 'NÃO ENCONTRADA'}`);
-  console.log(`   Fim: ${bestEndColumn ? `"${headers[bestEndColumn.index]}" (${bestEndColumn.confidence.toFixed(2)})` : 'NÃO ENCONTRADA'}`);
+  console.log(`📅 Date columns detected:`);
+  console.log(`   Start: ${bestStartColumn ? `"${headers[bestStartColumn.index]}" (confidence: ${bestStartColumn.confidence.toFixed(2)}, format: ${bestStartColumn.strategy.format})` : 'NOT FOUND'}`);
+  console.log(`   End: ${bestEndColumn ? `"${headers[bestEndColumn.index]}" (confidence: ${bestEndColumn.confidence.toFixed(2)}, format: ${bestEndColumn.strategy.format})` : 'NOT FOUND'}`);
   
-  // Mapeamento de campos
+  // Field mapping
   const columnIndexes = {
     numero: findColumnIndex(headers, FIELD_MAPPINGS.numero),
     objeto: findColumnIndex(headers, FIELD_MAPPINGS.objeto),
@@ -206,24 +206,24 @@ export function extractContractFromSpreadsheetDataIntelligent(
     status: findColumnIndex(headers, FIELD_MAPPINGS.status)
   };
   
-  console.log(`📊 Mapeamento:`, Object.entries(columnIndexes)
-    .map(([field, index]) => `${field}: ${index >= 0 ? `coluna ${index}` : 'não encontrado'}`)
+  console.log(`📊 Field mapping:`, Object.entries(columnIndexes)
+    .map(([field, index]) => `${field}: ${index >= 0 ? `column ${index}` : 'not found'}`)
     .join(', '));
   
   const contracts: Partial<Contract>[] = [];
   let successfulContracts = 0;
   let dateSuccesses = 0;
   
-  // Processamento de linhas OTIMIZADO
+  // Process rows with enhanced date parsing
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
     
     if (!row || !row.some(cell => cell && String(cell).trim() !== '')) continue;
     
-    console.log(`📝 Processando linha ${i}...`);
+    console.log(`📝 Processing row ${i}...`);
     
     try {
-      // Extração de dados básicos
+      // Extract basic data
       const numero = columnIndexes.numero >= 0 ? String(row[columnIndexes.numero] || '').trim() : `${sheetName}-${i}`;
       const objeto = columnIndexes.objeto >= 0 ? String(row[columnIndexes.objeto] || '').trim() : '';
       const contratante = columnIndexes.contratante >= 0 ? String(row[columnIndexes.contratante] || '').trim() || 'Órgão Público' : 'Órgão Público';
@@ -232,21 +232,41 @@ export function extractContractFromSpreadsheetDataIntelligent(
       const status = columnIndexes.status >= 0 ? parseStatus(row[columnIndexes.status]) : 'vigente';
       const valor = columnIndexes.valor >= 0 ? parseValue(row[columnIndexes.valor]) : 0;
       
-      // Parsing OTIMIZADO de datas
+      // Enhanced date parsing with column-specific strategies
       let dataInicio: Date | null = null;
       let dataTermino: Date | null = null;
       
       if (bestStartColumn) {
-        dataInicio = parseAdvancedDate(row[bestStartColumn.index]);
-        if (dataInicio) dateSuccesses++;
+        const startStrategy = bestStartColumn.strategy;
+        const parseOptions = {
+          assume: getAssumeFormat(startStrategy.format),
+          isEndColumn: false,
+          date1904: options.date1904 || false
+        };
+        
+        dataInicio = parseAdvancedDate(row[bestStartColumn.index], parseOptions);
+        if (dataInicio) {
+          dateSuccesses++;
+          console.log(`✅ Start date parsed: ${toYMD(dataInicio)}`);
+        }
       }
       
       if (bestEndColumn) {
-        dataTermino = parseAdvancedDate(row[bestEndColumn.index]);
-        if (dataTermino) dateSuccesses++;
+        const endStrategy = bestEndColumn.strategy;
+        const parseOptions = {
+          assume: getAssumeFormat(endStrategy.format),
+          isEndColumn: true, // For month/year formats, use last day of month
+          date1904: options.date1904 || false
+        };
+        
+        dataTermino = parseAdvancedDate(row[bestEndColumn.index], parseOptions);
+        if (dataTermino) {
+          dateSuccesses++;
+          console.log(`✅ End date parsed: ${toYMD(dataTermino)}`);
+        }
       }
       
-      // Cálculo de prazo
+      // Calculate period
       let prazoExecucao = 0;
       let prazoUnidade: 'dias' | 'meses' | 'anos' = 'dias';
       
@@ -256,12 +276,21 @@ export function extractContractFromSpreadsheetDataIntelligent(
         prazoUnidade = period.unidade;
       }
       
-      // Observações simplificadas
+      // Create observations
       const dateValidation = validateDateConsistency(dataInicio, dataTermino);
       let observacoes = `Extraído da planilha "${sheetName}" - linha ${i}.`;
       
       if (!dateValidation.isValid) {
         observacoes += ` Avisos: ${dateValidation.warnings.join(', ')}.`;
+      }
+      
+      // Add format information for debugging
+      if (bestStartColumn || bestEndColumn) {
+        observacoes += ` Formatos detectados: `;
+        if (bestStartColumn) observacoes += `início (${bestStartColumn.strategy.format})`;
+        if (bestStartColumn && bestEndColumn) observacoes += `, `;
+        if (bestEndColumn) observacoes += `fim (${bestEndColumn.strategy.format})`;
+        observacoes += `.`;
       }
       
       const contract: Partial<Contract> = {
@@ -270,8 +299,8 @@ export function extractContractFromSpreadsheetDataIntelligent(
         contratante,
         contratada: contratada || 'Empresa não especificada',
         valor,
-        dataInicio: dataInicio ? format(dataInicio, 'yyyy-MM-dd') : '',
-        dataTermino: dataTermino ? format(dataTermino, 'yyyy-MM-dd') : '',
+        dataInicio: dataInicio ? toYMD(dataInicio) : '',
+        dataTermino: dataTermino ? toYMD(dataTermino) : '',
         prazoExecucao,
         prazoUnidade,
         modalidade,
@@ -285,17 +314,30 @@ export function extractContractFromSpreadsheetDataIntelligent(
       contracts.push(contract);
       successfulContracts++;
       
-      console.log(`✅ Contrato criado: ${contract.numero}`);
+      console.log(`✅ Contract created: ${contract.numero} (${contract.dataInicio} to ${contract.dataTermino})`);
       
     } catch (error) {
-      console.error(`❌ Erro na linha ${i}:`, error);
+      console.error(`❌ Error processing row ${i}:`, error);
     }
   }
   
-  console.log(`📊 RESULTADO FINAL:`);
-  console.log(`   Contratos gerados: ${successfulContracts}`);
-  console.log(`   Datas extraídas: ${dateSuccesses}`);
-  console.log(`   Taxa de sucesso datas: ${dateSuccesses > 0 ? ((dateSuccesses / (successfulContracts * 2)) * 100).toFixed(1) : 0}%`);
+  console.log(`📊 ENHANCED EXTRACTION RESULTS:`);
+  console.log(`   Contracts generated: ${successfulContracts}`);
+  console.log(`   Dates extracted: ${dateSuccesses}`);
+  console.log(`   Date success rate: ${dateSuccesses > 0 ? ((dateSuccesses / (successfulContracts * 2)) * 100).toFixed(1) : 0}%`);
   
   return contracts;
+}
+
+function getAssumeFormat(detectedFormat: string): 'DD/MM/YYYY' | 'MM/DD/YYYY' | 'auto' {
+  switch (detectedFormat) {
+    case 'DD/MM/YYYY':
+    case 'DD/MM/YY':
+      return 'DD/MM/YYYY';
+    case 'MM/DD/YYYY':
+    case 'MM/DD/YY':
+      return 'MM/DD/YYYY';
+    default:
+      return 'auto';
+  }
 }

@@ -1,4 +1,3 @@
-
 import { Contract } from '@/types/contract';
 import { extractContractFromSpreadsheetDataIntelligent } from '@/utils/intelligentSpreadsheetExtractor';
 
@@ -12,104 +11,110 @@ export const processSpreadsheet = async (
   setImporting(true);
   setError('');
   
-  console.log('🚀 PROCESSAMENTO OTIMIZADO iniciado:', {
+  console.log('🚀 ENHANCED SPREADSHEET PROCESSING:', {
     nome: file.name,
     tipo: file.type,
     tamanho: `${(file.size / 1024).toFixed(2)} KB`
   });
   
   try {
-    setProgress?.({ stage: 'loading', progress: 10, message: '📄 Carregando arquivo...' });
+    setProgress?.({ stage: 'loading', progress: 10, message: '📄 Loading file...' });
     
-    // Verificações básicas
+    // Basic validations
     if (file.size === 0) {
-      throw new Error('Arquivo está vazio');
+      throw new Error('File is empty');
     }
     
     if (file.size > 20 * 1024 * 1024) {
-      throw new Error('Arquivo muito grande. Limite: 20MB');
+      throw new Error('File too large. Limit: 20MB');
     }
     
-    console.log('📚 Carregando biblioteca XLSX...');
+    console.log('📚 Loading XLSX library...');
     const XLSX = await import('xlsx');
-    console.log('✅ XLSX carregado');
+    console.log('✅ XLSX loaded');
     
-    setProgress?.({ stage: 'reading', progress: 20, message: '📖 Lendo dados...' });
+    setProgress?.({ stage: 'reading', progress: 20, message: '📖 Reading data...' });
     
     const arrayBuffer = await file.arrayBuffer();
-    console.log(`📄 Arquivo lido: ${arrayBuffer.byteLength} bytes`);
+    console.log(`📄 File read: ${arrayBuffer.byteLength} bytes`);
     
     if (arrayBuffer.byteLength === 0) {
-      throw new Error('Não foi possível ler o arquivo');
+      throw new Error('Could not read file');
     }
     
-    setProgress?.({ stage: 'parsing', progress: 30, message: '🧠 Analisando estrutura...' });
+    setProgress?.({ stage: 'parsing', progress: 30, message: '🧠 Analyzing structure...' });
     
-    // Configuração OTIMIZADA para máxima precisão
+    // Enhanced configuration for better date handling
     const workbook = XLSX.read(arrayBuffer, { 
       type: 'array',
-      cellDates: true,
+      cellDates: false, // We'll handle dates ourselves
       cellNF: false,
       cellText: false,
-      raw: false,
+      raw: true, // Keep raw values for better date detection
       dateNF: 'yyyy-mm-dd',
-      cellStyles: true,
+      cellStyles: false,
       cellHTML: false,
       sheetStubs: false
     });
     
     if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
-      throw new Error('Planilha não contém abas válidas');
+      throw new Error('Spreadsheet contains no valid sheets');
     }
     
-    console.log('📊 Workbook carregado:', {
-      abas: workbook.SheetNames,
-      totalAbas: workbook.SheetNames.length
+    console.log('📊 Workbook loaded:', {
+      sheets: workbook.SheetNames,
+      totalSheets: workbook.SheetNames.length
     });
+    
+    // Check for 1904 date system (Mac Excel)
+    const date1904 = workbook.Workbook?.WBProps?.date1904 || false;
+    if (date1904) {
+      console.log('📅 Detected 1904 date system (Mac Excel)');
+    }
     
     setProgress?.({ 
       stage: 'analyzing', 
       progress: 40, 
-      message: `🧠 Processando ${workbook.SheetNames.length} aba(s): ${workbook.SheetNames.join(', ')}` 
+      message: `🧠 Processing ${workbook.SheetNames.length} sheet(s): ${workbook.SheetNames.join(', ')}` 
     });
     
     const allContracts: Partial<Contract>[] = [];
     const totalSheets = workbook.SheetNames.length;
     
-    // Processamento OTIMIZADO de cada aba
+    // Process each sheet with enhanced extraction
     for (let i = 0; i < workbook.SheetNames.length; i++) {
       const sheetName = workbook.SheetNames[i];
-      console.log(`🧠 Processando aba ${i + 1}/${totalSheets}: "${sheetName}"`);
+      console.log(`🧠 Processing sheet ${i + 1}/${totalSheets}: "${sheetName}"`);
       
       const progressPercent = 40 + Math.round((i / totalSheets) * 45);
       setProgress?.({ 
         stage: 'extracting', 
         progress: progressPercent, 
-        message: `🧠 Extraindo aba "${sheetName}" (${i + 1}/${totalSheets})...` 
+        message: `🧠 Extracting sheet "${sheetName}" (${i + 1}/${totalSheets})...` 
       });
       
       try {
         const worksheet = workbook.Sheets[sheetName];
         
         if (!worksheet || !worksheet['!ref']) {
-          console.log(`⚠️ Aba "${sheetName}" vazia ou inacessível`);
+          console.log(`⚠️ Sheet "${sheetName}" empty or inaccessible`);
           continue;
         }
         
-        // Conversão OTIMIZADA
+        // Convert to JSON with raw values for better date handling
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
           header: 1,
           defval: null,
-          raw: false,
+          raw: true, // Keep raw values - crucial for date detection
           dateNF: 'yyyy-mm-dd',
           blankrows: false
         }) as any[][];
         
-        console.log(`📄 Aba "${sheetName}" convertida: ${jsonData.length} linhas`);
+        console.log(`📄 Sheet "${sheetName}" converted: ${jsonData.length} rows`);
         
-        // Filtrar linhas vazias
+        // Filter empty rows but keep headers
         const filteredData = jsonData.filter((row, index) => {
-          if (index === 0) return true; // Manter cabeçalho
+          if (index === 0) return true; // Keep headers
           return row && row.some(cell => 
             cell !== null && 
             cell !== undefined && 
@@ -118,45 +123,46 @@ export const processSpreadsheet = async (
         });
         
         if (filteredData.length < 2) {
-          console.log(`⚠️ Aba "${sheetName}" sem dados úteis`);
+          console.log(`⚠️ Sheet "${sheetName}" has no useful data`);
           continue;
         }
         
-        console.log(`🎯 Aba "${sheetName}" preparada: ${filteredData.length} linhas`);
+        console.log(`🎯 Sheet "${sheetName}" prepared: ${filteredData.length} rows`);
         
-        // Aplicar extração OTIMIZADA
+        // Apply enhanced extraction with date system info
         const contractsFromSheet = extractContractFromSpreadsheetDataIntelligent(
           filteredData, 
           sheetName, 
-          file.name
+          file.name,
+          { date1904 }
         );
         
         if (contractsFromSheet.length > 0) {
-          console.log(`✅ Extraído ${contractsFromSheet.length} contrato(s) da aba "${sheetName}"`);
+          console.log(`✅ Extracted ${contractsFromSheet.length} contract(s) from sheet "${sheetName}"`);
           allContracts.push(...contractsFromSheet);
         } else {
-          console.log(`⚠️ Nenhum contrato identificado na aba "${sheetName}"`);
+          console.log(`⚠️ No contracts identified in sheet "${sheetName}"`);
         }
         
       } catch (sheetError) {
-        console.error(`❌ Erro na aba "${sheetName}":`, sheetError);
+        console.error(`❌ Error in sheet "${sheetName}":`, sheetError);
       }
     }
     
-    setProgress?.({ stage: 'finalizing', progress: 90, message: '🎯 Finalizando...' });
+    setProgress?.({ stage: 'finalizing', progress: 90, message: '🎯 Finalizing...' });
     
-    console.log(`🏁 PROCESSAMENTO CONCLUÍDO: ${allContracts.length} contratos`);
+    console.log(`🏁 ENHANCED PROCESSING COMPLETE: ${allContracts.length} contracts`);
     
-    // Se nenhum contrato foi extraído, criar exemplo
+    // Create sample if no contracts found
     if (allContracts.length === 0) {
-      console.log('🔄 Criando exemplo...');
+      console.log('🔄 Creating sample...');
       
       const sampleContract: Partial<Contract> = {
-        numero: `EXEMPLO-${new Date().getFullYear()}-001`,
-        objeto: `Análise da planilha "${file.name}": Não foram identificados contratos automaticamente. ` +
-               `Verifique se os cabeçalhos estão em português/inglês e se há dados em formato tabular.`,
-        contratante: 'Órgão Público (revisar planilha)',
-        contratada: 'Empresa Contratada (revisar planilha)',
+        numero: `SAMPLE-${new Date().getFullYear()}-001`,
+        objeto: `Analysis of spreadsheet "${file.name}": No contracts were automatically identified. ` +
+               `Please verify that headers are in Portuguese/English and data is in tabular format.`,
+        contratante: 'Public Agency (review spreadsheet)',
+        contratada: 'Contracted Company (review spreadsheet)',
         valor: 0,
         dataInicio: '',
         dataTermino: '',
@@ -164,9 +170,10 @@ export const processSpreadsheet = async (
         prazoUnidade: 'dias',
         modalidade: 'pregao',
         status: 'vigente',
-        observacoes: `Arquivo "${file.name}" processado. ${workbook.SheetNames.length} aba(s): ${workbook.SheetNames.join(', ')}. ` +
-                    `Sistema não conseguiu identificar contratos automaticamente. ` +
-                    `Verifique se os dados estão em formato tabular com cabeçalhos apropriados.`,
+        observacoes: `File "${file.name}" processed. ${workbook.SheetNames.length} sheet(s): ${workbook.SheetNames.join(', ')}. ` +
+                    `System could not automatically identify contracts. ` +
+                    `Please check if data is in tabular format with appropriate headers. ` +
+                    `Date system: ${date1904 ? '1904 (Mac)' : '1900 (Windows)'}.`,
         aditivos: [],
         pagamentos: [],
         documentos: []
@@ -178,30 +185,31 @@ export const processSpreadsheet = async (
     setProgress?.({ 
       stage: 'complete', 
       progress: 100, 
-      message: `✅ Processamento concluído! ${allContracts.length} contrato(s)` 
+      message: `✅ Enhanced processing complete! ${allContracts.length} contract(s)` 
     });
     
-    console.log('📋 RELATÓRIO FINAL:', {
-      arquivo: file.name,
-      abas: workbook.SheetNames.length,
-      contratos: allContracts.length
+    console.log('📋 ENHANCED PROCESSING REPORT:', {
+      file: file.name,
+      sheets: workbook.SheetNames.length,
+      contracts: allContracts.length,
+      date1904: date1904
     });
     
-    // Delay para mostrar resultado
+    // Delay to show result
     setTimeout(() => {
       setPreview(allContracts);
       setImporting(false);
     }, 1000);
     
   } catch (err) {
-    console.error('❌ Erro no processamento:', err);
-    const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
+    console.error('❌ Enhanced processing error:', err);
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error';
     
-    setError(`Falha ao processar "${file.name}": ${errorMessage}. ` +
-            `Verifique se o arquivo não está corrompido ou protegido por senha. ` +
-            `Formatos suportados: .xlsx, .xls, .csv, .ods.`);
+    setError(`Failed to process "${file.name}": ${errorMessage}. ` +
+            `Please check if the file is not corrupted or password protected. ` +
+            `Supported formats: .xlsx, .xls, .csv, .ods.`);
     
-    setProgress?.({ stage: 'error', progress: 0, message: `❌ Erro: ${errorMessage}` });
+    setProgress?.({ stage: 'error', progress: 0, message: `❌ Error: ${errorMessage}` });
     setImporting(false);
   }
 };
