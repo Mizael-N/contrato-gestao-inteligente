@@ -1,4 +1,3 @@
-
 import { Contract } from '@/types/contract';
 import { 
   detectSpreadsheetType, 
@@ -317,8 +316,8 @@ const MODALIDADE_MAPPINGS: Record<string, 'pregao' | 'concorrencia' | 'tomada_pr
   // Pregão - expandido
   'pregão': 'pregao', 'pregao': 'pregao', 'pregão eletrônico': 'pregao', 'pregao eletronico': 'pregao',
   'pregão presencial': 'pregao', 'pregao presencial': 'pregao', 'pe': 'pregao', 'pp': 'pregao',
-  'pregao eletronico': 'pregao', 'sistema registro preços': 'pregao',
-  'sistema registro precos': 'pregao', 'srp': 'pregao', 'ata registro preços': 'pregao',
+  'sistema registro preços': 'pregao', 'sistema registro precos': 'pregao', 'srp': 'pregao', 
+  'ata registro preços': 'pregao',
   
   // Concorrência - expandido
   'concorrência': 'concorrencia', 'concorrencia': 'concorrencia', 'concorrência pública': 'concorrencia',
