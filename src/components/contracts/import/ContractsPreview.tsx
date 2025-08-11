@@ -12,7 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Download, FileSpreadsheet, AlertTriangle, Info } from 'lucide-react';
+import { Download, FileSpreadsheet, AlertTriangle, Info, Calendar, DollarSign } from 'lucide-react';
 import { Contract } from '@/types/contract';
 import { useContractImport } from '@/hooks/useContractImport';
 import { Progress } from "@/components/ui/progress"
@@ -23,7 +23,7 @@ interface ContractsPreviewProps {
     contracts: Partial<Contract>[];
     analysis: any[];
     validation: any;
-  } | Partial<Contract>[] | null;
+  } | null;
   fileType: 'spreadsheet';
   importing: boolean;
   onImport: (contracts: Partial<Contract>[]) => void;
@@ -33,15 +33,9 @@ export default function ContractsPreview({ preview, fileType, importing, onImpor
   const [selectedContracts, setSelectedContracts] = useState<string[]>([]);
   const { importing: importingContracts, progress, importContracts } = useContractImport();
 
-  // Type guard for enhanced preview format
-  const isEnhancedPreview = (preview: any): preview is { contracts: Partial<Contract>[]; analysis: any[]; validation: any } => {
-    return preview && typeof preview === 'object' && Array.isArray(preview.contracts);
-  };
-
-  // Extract data from preview
-  const contracts = isEnhancedPreview(preview) ? preview.contracts : (Array.isArray(preview) ? preview : []);
-  const analysis = isEnhancedPreview(preview) ? preview.analysis : [];
-  const validation = isEnhancedPreview(preview) ? preview.validation : null;
+  const contracts = preview?.contracts || [];
+  const analysis = preview?.analysis || [];
+  const validation = preview?.validation || null;
 
   useEffect(() => {
     if (contracts.length > 0) {
@@ -74,18 +68,29 @@ export default function ContractsPreview({ preview, fileType, importing, onImpor
   };
 
   const getStatusBadge = (contract: Partial<Contract>) => {
-    const missingData = [];
-    if (!contract.dataInicio) missingData.push('Data Início');
-    if (!contract.dataTermino) missingData.push('Data Término');
-    if (!contract.valor || contract.valor === 0) missingData.push('Valor');
+    const issues = [];
     
-    if (missingData.length === 0) {
-      return <Badge variant="default" className="bg-green-100 text-green-800">Completo</Badge>;
+    if (!contract.dataInicio) issues.push('Data Início');
+    if (!contract.dataTermino) issues.push('Data Término'); 
+    if (!contract.valor || contract.valor === 0) issues.push('Valor');
+    
+    if (issues.length === 0) {
+      return <Badge className="bg-green-100 text-green-800 border-green-200">Completo</Badge>;
     }
     
-    return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-      Revisar: {missingData.join(', ')}
-    </Badge>;
+    return (
+      <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+        Revisar: {issues.join(', ')}
+      </Badge>
+    );
+  };
+
+  const countMissingDates = () => {
+    return contracts.filter(c => !c.dataInicio || !c.dataTermino).length;
+  };
+
+  const countMissingValues = () => {
+    return contracts.filter(c => !c.valor || c.valor === 0).length;
   };
 
   if (importing) {
@@ -96,6 +101,9 @@ export default function ContractsPreview({ preview, fileType, importing, onImpor
     return null;
   }
 
+  const missingDates = countMissingDates();
+  const missingValues = countMissingValues();
+
   return (
     <Card className="mt-6">
       <CardHeader>
@@ -105,48 +113,80 @@ export default function ContractsPreview({ preview, fileType, importing, onImpor
             Contratos Encontrados ({contracts.length})
           </CardTitle>
           
-          {/* Analysis Summary */}
-          {validation && (
-            <div className="space-y-2">
-              {validation.warnings && validation.warnings.length > 0 && (
-                <Alert>
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertTitle>Avisos da Análise</AlertTitle>
-                  <AlertDescription>
-                    <ul className="list-disc list-inside space-y-1">
-                      {validation.warnings.slice(0, 5).map((warning: string, index: number) => (
-                        <li key={index} className="text-sm">{warning}</li>
-                      ))}
-                      {validation.warnings.length > 5 && (
-                        <li className="text-sm text-muted-foreground">
-                          ... e mais {validation.warnings.length - 5} avisos
-                        </li>
-                      )}
-                    </ul>
-                  </AlertDescription>
-                </Alert>
-              )}
-              
-              {validation.suggestions && validation.suggestions.length > 0 && (
-                <Alert>
-                  <Info className="h-4 w-4" />
-                  <AlertTitle>Sugestões</AlertTitle>
-                  <AlertDescription>
-                    <ul className="list-disc list-inside space-y-1">
-                      {validation.suggestions.slice(0, 3).map((suggestion: string, index: number) => (
-                        <li key={index} className="text-sm">{suggestion}</li>
-                      ))}
-                    </ul>
-                  </AlertDescription>
-                </Alert>
-              )}
+          {/* Resumo dos dados extraídos */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="flex items-center space-x-2 p-3 bg-blue-50 rounded-lg">
+              <FileSpreadsheet className="h-5 w-5 text-blue-600" />
+              <div>
+                <div className="font-semibold text-blue-900">{contracts.length}</div>
+                <div className="text-sm text-blue-700">Contratos encontrados</div>
+              </div>
             </div>
+            
+            <div className="flex items-center space-x-2 p-3 bg-amber-50 rounded-lg">
+              <Calendar className="h-5 w-5 text-amber-600" />
+              <div>
+                <div className="font-semibold text-amber-900">{missingDates}</div>
+                <div className="text-sm text-amber-700">Sem datas reconhecidas</div>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-2 p-3 bg-red-50 rounded-lg">
+              <DollarSign className="h-5 w-5 text-red-600" />
+              <div>
+                <div className="font-semibold text-red-900">{missingValues}</div>
+                <div className="text-sm text-red-700">Sem valores reconhecidos</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Avisos importantes */}
+          {missingDates > 0 && (
+            <Alert>
+              <Calendar className="h-4 w-4" />
+              <AlertTitle>Datas não reconhecidas automaticamente</AlertTitle>
+              <AlertDescription>
+                {missingDates} contrato(s) não tiveram suas datas de início e/ou término reconhecidas. 
+                Você precisará inserir essas informações manualmente após a importação.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {missingValues > 0 && (
+            <Alert>
+              <DollarSign className="h-4 w-4" />
+              <AlertTitle>Valores não reconhecidos automaticamente</AlertTitle>
+              <AlertDescription>
+                {missingValues} contrato(s) não tiveram seus valores reconhecidos. 
+                Verifique se os valores estão em formato numérico ou de moeda na planilha.
+              </AlertDescription>
+            </Alert>
           )}
           
-          {/* Column Analysis */}
+          {/* Avisos da validação */}
+          {validation && validation.warnings && validation.warnings.length > 0 && (
+            <Alert>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Avisos da Análise</AlertTitle>
+              <AlertDescription>
+                <ul className="list-disc list-inside space-y-1">
+                  {validation.warnings.slice(0, 3).map((warning: string, index: number) => (
+                    <li key={index} className="text-sm">{warning}</li>
+                  ))}
+                  {validation.warnings.length > 3 && (
+                    <li className="text-sm text-muted-foreground">
+                      ... e mais {validation.warnings.length - 3} avisos
+                    </li>
+                  )}
+                </ul>
+              </AlertDescription>
+            </Alert>
+          )}
+          
+          {/* Mapeamento de colunas */}
           {analysis.length > 0 && (
             <div className="bg-muted p-3 rounded-md">
-              <h4 className="text-sm font-medium mb-2">Mapeamento de Colunas</h4>
+              <h4 className="text-sm font-medium mb-2">Mapeamento de Colunas Detectado</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 text-xs">
                 {analysis.slice(0, 9).map((col: any, index: number) => (
                   <div key={index} className="flex justify-between items-center">
@@ -154,7 +194,7 @@ export default function ContractsPreview({ preview, fileType, importing, onImpor
                     <span className={`ml-2 px-2 py-1 rounded text-xs ${
                       col.field ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
                     }`}>
-                      {col.field || 'não mapeado'}
+                      {col.field || 'não reconhecido'}
                     </span>
                   </div>
                 ))}
@@ -203,7 +243,7 @@ export default function ContractsPreview({ preview, fileType, importing, onImpor
             )}
           </div>
 
-          {/* Import Progress */}
+          {/* Progresso da importação */}
           {progress && (
             <div className="space-y-2">
               <div className="flex justify-between items-center text-sm">
@@ -221,7 +261,7 @@ export default function ContractsPreview({ preview, fileType, importing, onImpor
             </div>
           )}
 
-          {/* Contracts Table */}
+          {/* Tabela de contratos */}
           <div className="border rounded-md max-h-96 overflow-y-auto">
             <Table>
               <TableHeader className="sticky top-0 bg-background">
@@ -264,22 +304,33 @@ export default function ContractsPreview({ preview, fileType, importing, onImpor
                       </div>
                     </TableCell>
                     <TableCell>
-                      {contract.valor ? `R$ ${contract.valor.toLocaleString('pt-BR')}` : (
-                        <span className="text-orange-600 text-xs">Não informado</span>
+                      {contract.valor && contract.valor > 0 ? (
+                        `R$ ${contract.valor.toLocaleString('pt-BR')}`
+                      ) : (
+                        <span className="text-amber-600 text-xs flex items-center">
+                          <DollarSign className="h-3 w-3 mr-1" />
+                          Não reconhecido
+                        </span>
                       )}
                     </TableCell>
                     <TableCell>
                       {contract.dataInicio ? (
                         new Date(contract.dataInicio).toLocaleDateString('pt-BR')
                       ) : (
-                        <span className="text-orange-600 text-xs">Faltando</span>
+                        <span className="text-amber-600 text-xs flex items-center">
+                          <Calendar className="h-3 w-3 mr-1" />
+                          Não reconhecida
+                        </span>
                       )}
                     </TableCell>
                     <TableCell>
                       {contract.dataTermino ? (
                         new Date(contract.dataTermino).toLocaleDateString('pt-BR')
                       ) : (
-                        <span className="text-orange-600 text-xs">Faltando</span>
+                        <span className="text-amber-600 text-xs flex items-center">
+                          <Calendar className="h-3 w-3 mr-1" />
+                          Não reconhecida
+                        </span>
                       )}
                     </TableCell>
                     <TableCell>

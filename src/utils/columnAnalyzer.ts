@@ -14,14 +14,14 @@ export interface ColumnAnalysis {
   pattern?: string;
 }
 
-// Enhanced field patterns with better date detection
+// Padrões mais específicos para campos de contrato
 const FIELD_PATTERNS = {
   numero: {
-    keywords: ['numero', 'número', 'contrato', 'processo', 'num', 'nº', 'codigo', 'código', 'id', 'identificador'],
+    keywords: ['numero', 'número', 'contrato', 'processo', 'num', 'nº', 'codigo', 'código', 'id'],
     priority: 1
   },
   objeto: {
-    keywords: ['objeto', 'descrição', 'descricao', 'servico', 'serviço', 'item', 'especificação', 'descricão'],
+    keywords: ['objeto', 'descrição', 'descricao', 'servico', 'serviço', 'item', 'especificação'],
     priority: 1
   },
   contratante: {
@@ -29,23 +29,31 @@ const FIELD_PATTERNS = {
     priority: 1
   },
   contratada: {
-    keywords: ['contratada', 'empresa', 'fornecedor', 'prestador', 'razao social', 'cnpj'],
+    keywords: ['contratada', 'empresa', 'fornecedor', 'prestador', 'razao social'],
     priority: 1
   },
   valor: {
-    keywords: ['valor', 'preco', 'preço', 'custo', 'montante', 'total', 'price', 'cost'],
+    keywords: ['valor', 'preco', 'preço', 'custo', 'montante', 'total'],
     priority: 1
   },
   dataInicio: {
-    keywords: ['inicio', 'início', 'data inicio', 'data início', 'assinatura', 'vigencia', 'vigência', 'start', 'begin', 'dt inicio', 'dt início'],
+    keywords: [
+      'inicio', 'início', 'data inicio', 'data início', 'dt inicio', 'dt início',
+      'assinatura', 'data assinatura', 'vigencia', 'vigência', 'inicio vigencia', 'início vigência',
+      'start', 'begin', 'effective'
+    ],
     priority: 2
   },
   dataTermino: {
-    keywords: ['fim', 'final', 'término', 'termino', 'vencimento', 'prazo', 'end', 'finish', 'dt fim', 'dt final'],
+    keywords: [
+      'fim', 'final', 'término', 'termino', 'data fim', 'data final', 'dt fim', 'dt final',
+      'vencimento', 'prazo', 'prazo final', 'fim vigencia', 'fim vigência',
+      'end', 'finish', 'deadline'
+    ],
     priority: 2
   },
   modalidade: {
-    keywords: ['modalidade', 'tipo', 'licitacao', 'licitação', 'pregão', 'modality'],
+    keywords: ['modalidade', 'tipo', 'licitacao', 'licitação', 'pregão'],
     priority: 1
   },
   status: {
@@ -69,38 +77,41 @@ function analyzeDataType(values: any[]): {
   pattern?: string;
   dateStrategy?: DateFormatStrategy;
 } {
-  const nonEmptyValues = values.filter(v => v !== null && v !== undefined && String(v).trim() !== '');
+  const nonEmptyValues = values.filter(v => 
+    v !== null && 
+    v !== undefined && 
+    String(v).trim() !== ''
+  );
   
   if (nonEmptyValues.length === 0) {
     return { type: 'empty' };
   }
 
-  // Enhanced date analysis
+  // Análise rigorosa de datas - só considera se >= 70% dos valores são datas válidas
   const dateStrategy = detectDateFormat(nonEmptyValues);
-  if (dateStrategy.confidence > 0.6) { // Lower threshold for better detection
-    console.log(`📅 Date pattern detected with confidence: ${dateStrategy.confidence}`);
+  if (dateStrategy.confidence >= 0.7) {
+    console.log(`📅 Formato de data detectado: ${dateStrategy.format} (confiança: ${dateStrategy.confidence})`);
     return { type: 'date', dateStrategy, pattern: dateStrategy.format };
   }
 
-  // Enhanced number analysis
+  // Análise de números
   const numberCount = nonEmptyValues.filter(v => {
     if (typeof v === 'number') return true;
     const str = String(v).trim();
-    // Better number pattern including currency
     return /^[\d.,\-+R$\s€£¥]+$/.test(str) && str.length > 0;
   }).length;
 
-  if (numberCount > nonEmptyValues.length * 0.7) { // Lower threshold
+  if (numberCount > nonEmptyValues.length * 0.8) {
     return { type: 'number', pattern: 'numeric' };
   }
 
-  // Text analysis
+  // Análise de texto
   const textCount = nonEmptyValues.filter(v => {
     const str = String(v).trim();
     return str.length > 0 && !/^[\d.,\-+R$\s€£¥]+$/.test(str);
   }).length;
 
-  if (textCount > nonEmptyValues.length * 0.5) { // Lower threshold
+  if (textCount > nonEmptyValues.length * 0.6) {
     return { type: 'text', pattern: 'textual' };
   }
 
@@ -118,25 +129,21 @@ function detectFieldType(header: string): { field: string | null; confidence: nu
       
       let confidence = 0;
       
-      // Exact match
+      // Correspondência exata
       if (normalizedHeader === normalizedKeyword) {
-        confidence = 0.98;
+        confidence = 0.95;
       }
-      // Contains keyword
+      // Contém palavra-chave
       else if (normalizedHeader.includes(normalizedKeyword)) {
-        confidence = 0.88;
+        confidence = 0.85;
       }
-      // Keyword contains header (abbreviations)
+      // Palavra-chave contém cabeçalho (abreviações)
       else if (normalizedKeyword.includes(normalizedHeader) && normalizedHeader.length >= 3) {
-        confidence = 0.78;
-      }
-      // Partial match for dates
-      else if (fieldName.includes('data') && (normalizedHeader.includes('data') || normalizedHeader.includes('dt'))) {
-        confidence = 0.65;
+        confidence = 0.75;
       }
       
-      // Apply field priority
-      confidence *= (config.priority === 1 ? 1.0 : 0.95);
+      // Aplicar prioridade do campo
+      confidence *= (config.priority === 1 ? 1.0 : 0.9);
       
       if (confidence > bestMatch.confidence) {
         bestMatch = { field: fieldName, confidence };
@@ -148,7 +155,7 @@ function detectFieldType(header: string): { field: string | null; confidence: nu
 }
 
 export function analyzeColumns(headers: string[], data: any[][]): ColumnAnalysis[] {
-  console.log('🔍 Enhanced column analysis starting:', headers.length);
+  console.log('🔍 Análise rigorosa de colunas iniciada:', headers.length);
   
   const analyses: ColumnAnalysis[] = [];
   
@@ -156,28 +163,30 @@ export function analyzeColumns(headers: string[], data: any[][]): ColumnAnalysis
     const header = String(headers[colIndex] || '').trim();
     
     if (!header) {
-      console.log(`⚠️ Column ${colIndex}: empty header, skipping`);
+      console.log(`⚠️ Coluna ${colIndex}: cabeçalho vazio, pulando`);
       continue;
     }
     
-    console.log(`📊 Analyzing column ${colIndex}: "${header}"`);
+    console.log(`📊 Analisando coluna ${colIndex}: "${header}"`);
     
-    // Extract column data (excluding header row)
+    // Extrair dados da coluna (excluindo linha de cabeçalho)
     const columnData = data.slice(1).map(row => row[colIndex]);
     const nonEmptyData = columnData.filter(v => v !== null && v !== undefined && String(v).trim() !== '');
     
-    console.log(`  📈 Data: ${columnData.length} total, ${nonEmptyData.length} non-empty`);
+    console.log(`  📈 Dados: ${columnData.length} total, ${nonEmptyData.length} não vazios`);
     
-    // Data type analysis
+    // Análise de tipo de dados
     const dataAnalysis = analyzeDataType(columnData);
     
-    // Field detection
+    // Detecção de campo
     const fieldDetection = detectFieldType(header);
     
-    // Boost confidence if data type matches expected field type
-    if (fieldDetection.field && fieldDetection.field.includes('data') && dataAnalysis.type === 'date') {
-      fieldDetection.confidence = Math.min(0.99, fieldDetection.confidence + 0.15);
-      console.log(`🚀 Date field confidence boosted: ${fieldDetection.confidence}`);
+    // Aumentar confiança apenas se tipo de dados corresponde E confiança de data é alta
+    if (fieldDetection.field && fieldDetection.field.includes('data') && 
+        dataAnalysis.type === 'date' && dataAnalysis.dateStrategy && 
+        dataAnalysis.dateStrategy.confidence >= 0.7) {
+      fieldDetection.confidence = Math.min(0.98, fieldDetection.confidence + 0.1);
+      console.log(`🚀 Confiança de campo de data aumentada: ${fieldDetection.confidence}`);
     }
     
     const samples = nonEmptyData.slice(0, 5);
@@ -197,10 +206,10 @@ export function analyzeColumns(headers: string[], data: any[][]): ColumnAnalysis
     
     analyses.push(analysis);
     
-    console.log(`  ✅ Field: ${analysis.field || 'unmapped'} (${(analysis.confidence * 100).toFixed(0)}%)`);
-    console.log(`  📊 Type: ${analysis.dataType} ${analysis.pattern ? `(${analysis.pattern})` : ''}`);
+    console.log(`  ✅ Campo: ${analysis.field || 'não mapeado'} (${(analysis.confidence * 100).toFixed(0)}%)`);
+    console.log(`  📊 Tipo: ${analysis.dataType} ${analysis.pattern ? `(${analysis.pattern})` : ''}`);
     if (analysis.dateStrategy) {
-      console.log(`  📅 Date strategy: ${analysis.dateStrategy.format} (${(analysis.dateStrategy.confidence * 100).toFixed(0)}%)`);
+      console.log(`  📅 Estratégia de data: ${analysis.dateStrategy.format} (${(analysis.dateStrategy.confidence * 100).toFixed(0)}%)`);
     }
   }
   
@@ -220,9 +229,9 @@ export function validateColumnMapping(analyses: ColumnAnalysis[]): {
   const requiredFields = ['numero', 'objeto', 'contratante', 'contratada'];
   const recommendedFields = ['dataInicio', 'dataTermino', 'valor'];
   
-  const mappedFields = new Set(analyses.filter(a => a.field && a.confidence > 0.6).map(a => a.field));
+  const mappedFields = new Set(analyses.filter(a => a.field && a.confidence > 0.7).map(a => a.field));
   
-  // Check required fields
+  // Verificar campos obrigatórios
   for (const field of requiredFields) {
     if (!mappedFields.has(field)) {
       missingFields.push(field);
@@ -230,25 +239,25 @@ export function validateColumnMapping(analyses: ColumnAnalysis[]): {
     }
   }
   
-  // Check recommended fields
+  // Verificar campos recomendados
   for (const field of recommendedFields) {
     if (!mappedFields.has(field)) {
       suggestions.push(`Campo recomendado não encontrado: ${field}`);
     }
   }
   
-  // Check columns with too much empty data
+  // Verificar colunas com muitos dados vazios
   for (const analysis of analyses) {
-    if (analysis.field && analysis.emptyCount > analysis.totalCount * 0.7) {
+    if (analysis.field && analysis.emptyCount > analysis.totalCount * 0.8) {
       warnings.push(`Coluna "${analysis.header}" tem muitos dados vazios (${analysis.emptyCount}/${analysis.totalCount})`);
     }
   }
   
-  // Check date columns with low confidence
+  // Verificar colunas de data com baixa confiança
   const dateColumns = analyses.filter(a => a.dataType === 'date');
   for (const dateCol of dateColumns) {
     if (dateCol.dateStrategy && dateCol.dateStrategy.confidence < 0.7) {
-      warnings.push(`Formato de data incerto na coluna "${dateCol.header}" (${(dateCol.dateStrategy.confidence * 100).toFixed(0)}%)`);
+      warnings.push(`Formato de data incerto na coluna "${dateCol.header}" (${(dateCol.dateStrategy.confidence * 100).toFixed(0)}% de confiança)`);
     }
   }
   

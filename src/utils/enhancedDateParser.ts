@@ -1,6 +1,4 @@
 
-import { detectDateFormat } from './dateFormatDetector';
-
 export interface DateParseOptions {
   assume?: 'DD/MM/YYYY' | 'MM/DD/YYYY' | 'auto';
   isEndColumn?: boolean;
@@ -13,49 +11,46 @@ export function parseEnhancedDate(value: any, options: DateParseOptions = {}): D
   
   const { assume = 'auto', isEndColumn = false, date1904 = false, columnStrategy } = options;
   
-  console.log(`🗓️ Enhanced parsing: "${value}" (${typeof value})`);
+  console.log(`🗓️ Tentando analisar data: "${value}" (tipo: ${typeof value})`);
   
-  // Already a valid Date
+  // Se já é uma Date válida
   if (value instanceof Date && !isNaN(value.getTime())) {
-    console.log(`✅ Already valid date: ${formatYMD(value)}`);
-    return value;
+    const year = value.getFullYear();
+    if (year >= 1900 && year <= 2100) {
+      console.log(`✅ Data já válida: ${formatYMD(value)}`);
+      return value;
+    } else {
+      console.log(`❌ Ano inválido: ${year}`);
+      return null;
+    }
   }
   
-  // Excel serial numbers
-  if (typeof value === 'number' && value > 0 && value < 100000) {
+  // Números seriais do Excel
+  if (typeof value === 'number' && value > 1 && value < 100000) {
     return parseExcelSerial(value, date1904);
   }
   
-  // String parsing
+  // Parsing de strings
   if (typeof value === 'string') {
     const cleanValue = value.trim();
     if (!cleanValue) return null;
     
-    return parseStringDateRobust(cleanValue, assume, isEndColumn, columnStrategy);
+    return parseStringDateStrict(cleanValue, assume, isEndColumn, columnStrategy);
   }
   
-  // Try to convert other types to string
-  try {
-    const stringValue = String(value).trim();
-    if (stringValue && stringValue !== 'null' && stringValue !== 'undefined') {
-      return parseStringDateRobust(stringValue, assume, isEndColumn, columnStrategy);
-    }
-  } catch (e) {
-    console.log(`❌ Could not convert to string: ${e}`);
-  }
-  
-  console.log(`❌ Parse failed: "${value}"`);
+  // NÃO tentar converter outros tipos - ser rigoroso
+  console.log(`❌ Tipo não suportado para data: ${typeof value}`);
   return null;
 }
 
 function parseExcelSerial(serial: number, date1904: boolean): Date | null {
   try {
-    console.log(`📊 Excel serial: ${serial} (1904: ${date1904})`);
+    console.log(`📊 Número serial Excel: ${serial} (sistema 1904: ${date1904})`);
     
     const baseDate = date1904 ? new Date(1904, 0, 1) : new Date(1899, 11, 30);
     let adjustedSerial = serial;
     
-    // Excel leap year bug adjustment
+    // Ajuste para bug do ano bissexto do Excel
     if (!date1904 && serial >= 60) {
       adjustedSerial = serial - 1;
     }
@@ -65,86 +60,77 @@ function parseExcelSerial(serial: number, date1904: boolean): Date | null {
     if (!isNaN(date.getTime())) {
       const year = date.getFullYear();
       if (year >= 1900 && year <= 2100) {
-        console.log(`✅ Excel: ${serial} → ${formatYMD(date)}`);
+        console.log(`✅ Serial Excel convertido: ${serial} → ${formatYMD(date)}`);
         return date;
+      } else {
+        console.log(`❌ Ano inválido do serial: ${year}`);
       }
     }
     
-    console.log(`❌ Invalid Excel result: ${serial} → ${date}`);
+    console.log(`❌ Resultado inválido do serial: ${serial} → ${date}`);
     return null;
   } catch (error) {
-    console.log(`❌ Excel parsing error:`, error);
+    console.log(`❌ Erro no parsing serial Excel:`, error);
     return null;
   }
 }
 
-function parseStringDateRobust(
+function parseStringDateStrict(
   dateStr: string, 
-  assume: 'DD/MM/YYYY' | 'MM/DD/YYYY' | 'auto',
+  assume: 'DD/MM/YYYY' | 'MM/DD/YYYY' | 'auto', 
   isEndColumn: boolean,
   columnStrategy?: any
 ): Date | null {
-  console.log(`🔤 String parsing: "${dateStr}" (assume: ${assume})`);
+  console.log(`🔤 Parsing rigoroso de string: "${dateStr}" (assumir: ${assume})`);
   
-  // Remove common prefixes/suffixes
+  // Remover prefixos/sufixos comuns
   let cleanStr = dateStr
     .replace(/^(data|dt|date)[\s:]/i, '')
     .replace(/[()]/g, '')
     .trim();
   
-  // ISO format (YYYY-MM-DD, YYYY/MM/DD)
+  // Formato ISO (YYYY-MM-DD, YYYY/MM/DD) - mais confiável
   const isoMatch = cleanStr.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/);
   if (isoMatch) {
     const [, year, month, day] = isoMatch;
     const date = createSafeDate(parseInt(year), parseInt(month) - 1, parseInt(day));
     if (date) {
-      console.log(`✅ ISO: "${dateStr}" → ${formatYMD(date)}`);
+      console.log(`✅ Formato ISO: "${dateStr}" → ${formatYMD(date)}`);
       return date;
     }
   }
   
-  // Month/Year format (MM/YYYY, MM/YY)
+  // Formato Mês/Ano (MM/YYYY, MM/YY) - SÓ se estratégia da coluna suporta
   const monthYearMatch = cleanStr.match(/^(\d{1,2})[-\/\.](\d{2,4})$/);
-  if (monthYearMatch) {
+  if (monthYearMatch && columnStrategy?.format?.includes('MM/YYYY')) {
     const [, month, year] = monthYearMatch;
     const fullYear = year.length === 2 ? expandYear(parseInt(year)) : parseInt(year);
+    
+    // Para colunas de fim, assumir último dia do mês; para início, primeiro dia
     const day = isEndColumn ? getLastDayOfMonth(parseInt(month), fullYear) : 1;
     
     const date = createSafeDate(fullYear, parseInt(month) - 1, day);
     if (date) {
-      console.log(`✅ Month/Year: "${dateStr}" → ${formatYMD(date)}`);
+      console.log(`✅ Mês/Ano: "${dateStr}" → ${formatYMD(date)} (coluna fim: ${isEndColumn})`);
       return date;
     }
   }
   
-  // DD/MM/YYYY or MM/DD/YYYY format
+  // Formato DD/MM/YYYY ou MM/DD/YYYY
   const standardMatch = cleanStr.match(/^(\d{1,2})[-\/\.](\d{1,2})[-\/\.](\d{2,4})$/);
   if (standardMatch) {
     const [, first, second, year] = standardMatch;
     const fullYear = year.length === 2 ? expandYear(parseInt(year)) : parseInt(year);
     
-    return parseDayMonth(first, second, fullYear, assume, columnStrategy);
+    return parseDayMonthStrict(first, second, fullYear, assume, columnStrategy);
   }
   
-  // Try native Date parsing as last resort
-  try {
-    const nativeDate = new Date(cleanStr);
-    if (!isNaN(nativeDate.getTime())) {
-      const year = nativeDate.getFullYear();
-      if (year >= 1900 && year <= 2100) {
-        console.log(`✅ Native: "${dateStr}" → ${formatYMD(nativeDate)}`);
-        return nativeDate;
-      }
-    }
-  } catch (e) {
-    // Silent fail
-  }
-  
-  console.log(`❌ No pattern matched: "${dateStr}"`);
+  // NÃO usar parsing nativo como fallback - ser rigoroso
+  console.log(`❌ Nenhum padrão correspondeu: "${dateStr}"`);
   return null;
 }
 
-function parseDayMonth(
+function parseDayMonthStrict(
   first: string, 
   second: string, 
   year: number, 
@@ -156,8 +142,8 @@ function parseDayMonth(
   
   let day: number, month: number;
   
-  // Use column strategy if available and reliable
-  if (columnStrategy?.format && columnStrategy.confidence > 0.8) {
+  // Usar estratégia da coluna se disponível e confiável
+  if (columnStrategy?.format && columnStrategy.confidence > 0.7) {
     if (columnStrategy.format.includes('DD/MM')) {
       day = firstNum;
       month = secondNum;
@@ -180,39 +166,39 @@ function determineDayMonth(firstNum: number, secondNum: number, assume: string):
   } else if (assume === 'MM/DD/YYYY') {
     return { day: secondNum, month: firstNum };
   } else { // auto
-    // Unambiguous cases
+    // Casos não ambíguos
     if (firstNum > 12 && secondNum <= 12) {
       return { day: firstNum, month: secondNum };
     } else if (secondNum > 12 && firstNum <= 12) {
       return { day: secondNum, month: firstNum };
     } else {
-      // Ambiguous - prefer Brazilian format (DD/MM)
+      // Ambíguo - preferir formato brasileiro (DD/MM)
       return { day: firstNum, month: secondNum };
     }
   }
 }
 
 function createSafeDate(year: number, month: number, day: number): Date | null {
-  // Validate ranges
+  // Validar intervalos
   if (year < 1900 || year > 2100 || month < 0 || month > 11 || day < 1 || day > 31) {
-    console.log(`❌ Invalid ranges: ${day}/${month + 1}/${year}`);
+    console.log(`❌ Intervalos inválidos: ${day}/${month + 1}/${year}`);
     return null;
   }
   
   try {
     const date = new Date(year, month, day);
     
-    // Verify JavaScript didn't adjust the date
+    // Verificar que o JavaScript não ajustou a data
     if (date.getFullYear() === year && 
         date.getMonth() === month && 
         date.getDate() === day) {
       return date;
     } else {
-      console.log(`❌ Date adjusted: ${day}/${month + 1}/${year} → ${date}`);
+      console.log(`❌ Data ajustada pelo JS: ${day}/${month + 1}/${year} → ${date}`);
       return null;
     }
   } catch (error) {
-    console.log(`❌ Date creation error:`, error);
+    console.log(`❌ Erro na criação da data:`, error);
     return null;
   }
 }
@@ -222,7 +208,7 @@ function expandYear(twoDigitYear: number): number {
   const currentCentury = Math.floor(currentYear / 100) * 100;
   const currentTwoDigit = currentYear % 100;
   
-  // If year is more than 20 years in the future, assume previous century
+  // Se o ano está mais de 20 anos no futuro, assumir século anterior
   if (twoDigitYear > currentTwoDigit + 20) {
     return currentCentury - 100 + twoDigitYear;
   } else {

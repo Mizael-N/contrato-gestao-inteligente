@@ -26,7 +26,7 @@ function parseValue(value: any): number {
   
   if (!cleanValue) return 0;
   
-  // Handle decimal separators
+  // Lidar com separadores decimais
   if (cleanValue.includes(',') && cleanValue.includes('.')) {
     if (cleanValue.lastIndexOf(',') > cleanValue.lastIndexOf('.')) {
       cleanValue = cleanValue.replace(/\./g, '').replace(',', '.');
@@ -128,13 +128,29 @@ function getAssumeFormat(detectedFormat?: string): 'DD/MM/YYYY' | 'MM/DD/YYYY' |
   }
 }
 
-// Generate unique key for contract to prevent duplicates
+// Gerar chave única MAIS rigorosa para prevenir duplicatas
 function generateContractKey(contract: Partial<Contract>): string {
-  const numero = (contract.numero || '').trim().toLowerCase();
-  const objeto = (contract.objeto || '').substring(0, 50).trim().toLowerCase();
-  const contratada = (contract.contratada || '').trim().toLowerCase();
+  const numero = (contract.numero || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  const objeto = (contract.objeto || '').substring(0, 30).trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  const contratada = (contract.contratada || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  const valor = contract.valor || 0;
   
-  return `${numero}_${objeto}_${contratada}`.replace(/[^a-z0-9_]/g, '');
+  return `${numero}_${objeto}_${contratada}_${valor}`;
+}
+
+// Validar se linha tem dados suficientes para ser um contrato
+function isValidContractRow(row: any[], fieldMappings: Record<string, ColumnAnalysis | null>): boolean {
+  // Verificar se tem pelo menos número OU objeto OU contratada
+  const hasNumero = fieldMappings.numero && extractFieldValue(row, fieldMappings.numero);
+  const hasObjeto = fieldMappings.objeto && extractFieldValue(row, fieldMappings.objeto);
+  const hasContratada = fieldMappings.contratada && extractFieldValue(row, fieldMappings.contratada);
+  
+  const hasMinimumData = hasNumero || hasObjeto || hasContratada;
+  
+  // Verificar se não é linha totalmente vazia
+  const hasAnyData = row.some(cell => cell && String(cell).trim() !== '');
+  
+  return hasMinimumData && hasAnyData;
 }
 
 export function extractContractFromSpreadsheetDataIntelligent(
@@ -147,10 +163,10 @@ export function extractContractFromSpreadsheetDataIntelligent(
   analysis: ColumnAnalysis[];
   validation: ReturnType<typeof validateColumnMapping>;
 } {
-  console.log(`🚀 ENHANCED EXTRACTION: Sheet "${sheetName}" with ${data.length} rows`);
+  console.log(`🚀 EXTRAÇÃO RIGOROSA: Planilha "${sheetName}" com ${data.length} linhas`);
   
   if (data.length < 2) {
-    console.log(`⚠️ Insufficient data: ${data.length} rows`);
+    console.log(`⚠️ Dados insuficientes: ${data.length} linhas`);
     return {
       contracts: [],
       analysis: [],
@@ -158,51 +174,53 @@ export function extractContractFromSpreadsheetDataIntelligent(
     };
   }
   
-  // Step 1: Column analysis
+  // Passo 1: Análise de colunas
   const headers = data[0].map(h => String(h || '').trim()).filter(h => h);
-  console.log(`📋 Headers found: ${headers.length}`, headers);
+  console.log(`📋 Cabeçalhos encontrados: ${headers.length}`, headers);
   
   const columnAnalyses = analyzeColumns(headers, data);
   const validation = validateColumnMapping(columnAnalyses);
   
-  console.log(`🔍 Analysis complete:`, {
-    columns: columnAnalyses.length,
-    mapped: columnAnalyses.filter(a => a.field).length,
-    dates: columnAnalyses.filter(a => a.dataType === 'date').length
+  console.log(`🔍 Análise completa:`, {
+    colunas: columnAnalyses.length,
+    mapeadas: columnAnalyses.filter(a => a.field).length,
+    datas: columnAnalyses.filter(a => a.dataType === 'date').length
   });
   
-  // Step 2: Field mappings
+  // Passo 2: Mapeamentos de campos (SÓ aceitar alta confiança)
   const fieldMappings: Record<string, ColumnAnalysis | null> = {};
   
   for (const analysis of columnAnalyses) {
-    if (analysis.field && analysis.confidence > 0.5) {
+    if (analysis.field && analysis.confidence > 0.7) { // Aumentei de 0.5 para 0.7
       if (!fieldMappings[analysis.field] || fieldMappings[analysis.field]!.confidence < analysis.confidence) {
         fieldMappings[analysis.field] = analysis;
       }
     }
   }
   
-  console.log(`🗺️ Field mappings created:`, Object.keys(fieldMappings));
+  console.log(`🗺️ Mapeamentos de campo criados:`, Object.keys(fieldMappings));
   
-  // Step 3: Process rows (prevent duplicates)
+  // Passo 3: Processar linhas (prevenir duplicatas de forma rigorosa)
   const contracts: Partial<Contract>[] = [];
   const processedKeys = new Set<string>();
-  let successfulContracts = 0;
-  let dateExtractions = 0;
+  let contractsProcessed = 0;
+  let dateParseAttempts = 0;
+  let successfulDates = 0;
   
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
     
-    // Skip empty rows
-    if (!row || !row.some(cell => cell && String(cell).trim() !== '')) {
-      console.log(`⏭️ Skipping empty row ${i}`);
+    // Pular linhas vazias ou inválidas
+    if (!row || !isValidContractRow(row, fieldMappings)) {
+      console.log(`⏭️ Pulando linha ${i}: dados insuficientes`);
       continue;
     }
     
-    console.log(`📝 Processing row ${i}...`);
+    console.log(`📝 Processando linha ${i}...`);
+    contractsProcessed++;
     
     try {
-      // Extract basic data
+      // Extrair dados básicos
       const numero = extractFieldValue(row, fieldMappings.numero) || `${sheetName}-${i}`;
       const objeto = extractFieldValue(row, fieldMappings.objeto) || 'Objeto não especificado';
       const contratante = extractFieldValue(row, fieldMappings.contratante) || 'Órgão Público';
@@ -211,11 +229,12 @@ export function extractContractFromSpreadsheetDataIntelligent(
       const status = parseStatus(extractFieldValue(row, fieldMappings.status));
       const valor = parseValue(extractFieldValue(row, fieldMappings.valor));
       
-      // Enhanced date parsing
+      // Parsing RIGOROSO de datas - não completar automaticamente
       let dataInicio: Date | null = null;
       let dataTermino: Date | null = null;
       
       if (fieldMappings.dataInicio) {
+        dateParseAttempts++;
         const startValue = row[fieldMappings.dataInicio.index];
         const parseOptions = {
           assume: getAssumeFormat(fieldMappings.dataInicio.dateStrategy?.format),
@@ -226,14 +245,15 @@ export function extractContractFromSpreadsheetDataIntelligent(
         
         dataInicio = parseEnhancedDate(startValue, parseOptions);
         if (dataInicio) {
-          dateExtractions++;
-          console.log(`✅ Start date extracted: ${toYMD(dataInicio)}`);
+          successfulDates++;
+          console.log(`✅ Data início extraída: ${toYMD(dataInicio)}`);
         } else {
-          console.log(`⚠️ Failed to parse start date: "${startValue}"`);
+          console.log(`⚠️ Falha ao analisar data início: "${startValue}"`);
         }
       }
       
       if (fieldMappings.dataTermino) {
+        dateParseAttempts++;
         const endValue = row[fieldMappings.dataTermino.index];
         const parseOptions = {
           assume: getAssumeFormat(fieldMappings.dataTermino.dateStrategy?.format),
@@ -244,14 +264,14 @@ export function extractContractFromSpreadsheetDataIntelligent(
         
         dataTermino = parseEnhancedDate(endValue, parseOptions);
         if (dataTermino) {
-          dateExtractions++;
-          console.log(`✅ End date extracted: ${toYMD(dataTermino)}`);
+          successfulDates++;
+          console.log(`✅ Data término extraída: ${toYMD(dataTermino)}`);
         } else {
-          console.log(`⚠️ Failed to parse end date: "${endValue}"`);
+          console.log(`⚠️ Falha ao analisar data término: "${endValue}"`);
         }
       }
       
-      // Calculate period
+      // Calcular prazo SÓ se ambas as datas existem
       let prazoExecucao = 0;
       let prazoUnidade: 'dias' | 'meses' | 'anos' = 'dias';
       
@@ -259,55 +279,57 @@ export function extractContractFromSpreadsheetDataIntelligent(
         const period = calculatePeriod(dataInicio, dataTermino);
         prazoExecucao = period.prazo;
         prazoUnidade = period.unidade;
-      } else {
-        prazoExecucao = 365; // Default 1 year
       }
+      // NÃO definir prazo padrão - deixar 0 se não conseguir calcular
       
-      // Create contract
+      // Criar contrato
       const contract: Partial<Contract> = {
         numero: String(numero).trim(),
         objeto: String(objeto).trim(),
         contratante: String(contratante).trim(),
         contratada: String(contratada).trim(),
         valor,
-        dataInicio: dataInicio ? toYMD(dataInicio) : '',
-        dataTermino: dataTermino ? toYMD(dataTermino) : '',
+        dataInicio: dataInicio ? toYMD(dataInicio) : '', // Vazio se não conseguir extrair
+        dataTermino: dataTermino ? toYMD(dataTermino) : '', // Vazio se não conseguir extrair
         prazoExecucao,
         prazoUnidade,
         modalidade,
         status,
-        observacoes: `Extraído da planilha "${sheetName}" linha ${i}. ` +
-                    `${!dataInicio ? 'Data início ausente. ' : ''}` +
-                    `${!dataTermino ? 'Data término ausente. ' : ''}` +
-                    `${valor === 0 ? 'Valor ausente. ' : ''}` +
-                    `Complete os dados faltantes após a importação.`,
+        observacoes: `Importado da planilha "${sheetName}" linha ${i}. ` +
+                    `${!dataInicio ? 'Data de início não foi reconhecida automaticamente. ' : ''}` +
+                    `${!dataTermino ? 'Data de término não foi reconhecida automaticamente. ' : ''}` +
+                    `${valor === 0 ? 'Valor não foi reconhecido automaticamente. ' : ''}` +
+                    `Revise e complete os dados antes de finalizar.`,
         aditivos: [],
         pagamentos: [],
         documentos: []
       };
       
-      // Check for duplicates
+      // Verificação rigorosa de duplicatas
       const contractKey = generateContractKey(contract);
       if (processedKeys.has(contractKey)) {
-        console.log(`⚠️ Duplicate contract skipped: ${contract.numero}`);
+        console.log(`⚠️ Contrato duplicado ignorado: ${contract.numero} (chave: ${contractKey})`);
         continue;
       }
       
       processedKeys.add(contractKey);
       contracts.push(contract);
-      successfulContracts++;
       
-      console.log(`✅ Contract created: ${contract.numero}`);
+      console.log(`✅ Contrato criado: ${contract.numero}`);
       
     } catch (error) {
-      console.error(`❌ Error processing row ${i}:`, error);
+      console.error(`❌ Erro processando linha ${i}:`, error);
     }
   }
   
-  console.log(`📊 EXTRACTION RESULTS:`);
-  console.log(`   Contracts: ${successfulContracts}`);
-  console.log(`   Date extractions: ${dateExtractions}`);
-  console.log(`   Success rate: ${successfulContracts > 0 ? ((dateExtractions / (successfulContracts * 2)) * 100).toFixed(1) : 0}%`);
+  const dateSuccessRate = dateParseAttempts > 0 ? (successfulDates / dateParseAttempts) * 100 : 0;
+  
+  console.log(`📊 RESULTADOS DA EXTRAÇÃO RIGOROSA:`);
+  console.log(`   Linhas processadas: ${contractsProcessed}`);
+  console.log(`   Contratos únicos: ${contracts.length}`);
+  console.log(`   Tentativas de parsing de data: ${dateParseAttempts}`);
+  console.log(`   Datas extraídas com sucesso: ${successfulDates}`);
+  console.log(`   Taxa de sucesso de datas: ${dateSuccessRate.toFixed(1)}%`);
   
   return {
     contracts,
