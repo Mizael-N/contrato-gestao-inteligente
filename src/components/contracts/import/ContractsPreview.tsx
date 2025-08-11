@@ -23,23 +23,22 @@ interface ContractsPreviewProps {
     contracts: Partial<Contract>[];
     analysis: any[];
     validation: any;
-  } | Partial<Contract>[];
-  fileType: 'spreadsheet' | 'document' | 'image' | null;
-  processing: boolean;
+  } | Partial<Contract>[] | null;
+  fileType: 'spreadsheet';
   importing: boolean;
   onImport: (contracts: Partial<Contract>[]) => void;
 }
 
-export default function ContractsPreview({ preview, fileType, processing, importing, onImport }: ContractsPreviewProps) {
+export default function ContractsPreview({ preview, fileType, importing, onImport }: ContractsPreviewProps) {
   const [selectedContracts, setSelectedContracts] = useState<string[]>([]);
   const { importing: importingContracts, progress, importContracts } = useContractImport();
 
-  // Type guard to check if preview is enhanced format
+  // Type guard for enhanced preview format
   const isEnhancedPreview = (preview: any): preview is { contracts: Partial<Contract>[]; analysis: any[]; validation: any } => {
     return preview && typeof preview === 'object' && Array.isArray(preview.contracts);
   };
 
-  // Handle preview data structure (enhanced vs legacy)
+  // Extract data from preview
   const contracts = isEnhancedPreview(preview) ? preview.contracts : (Array.isArray(preview) ? preview : []);
   const analysis = isEnhancedPreview(preview) ? preview.analysis : [];
   const validation = isEnhancedPreview(preview) ? preview.validation : null;
@@ -84,10 +83,12 @@ export default function ContractsPreview({ preview, fileType, processing, import
       return <Badge variant="default" className="bg-green-100 text-green-800">Completo</Badge>;
     }
     
-    return <Badge variant="destructive">Faltam: {missingData.join(', ')}</Badge>;
+    return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+      Revisar: {missingData.join(', ')}
+    </Badge>;
   };
 
-  if (processing || importing) {
+  if (importing) {
     return null;
   }
 
@@ -101,16 +102,16 @@ export default function ContractsPreview({ preview, fileType, processing, import
         <div className="flex flex-col space-y-4">
           <CardTitle className="flex items-center">
             <FileSpreadsheet className="h-5 w-5 mr-2" />
-            Preview dos Contratos ({contracts.length})
+            Contratos Encontrados ({contracts.length})
           </CardTitle>
           
-          {/* Enhanced Analysis Summary */}
+          {/* Analysis Summary */}
           {validation && (
             <div className="space-y-2">
               {validation.warnings && validation.warnings.length > 0 && (
                 <Alert>
                   <AlertTriangle className="h-4 w-4" />
-                  <AlertTitle>Avisos de Análise</AlertTitle>
+                  <AlertTitle>Avisos da Análise</AlertTitle>
                   <AlertDescription>
                     <ul className="list-disc list-inside space-y-1">
                       {validation.warnings.slice(0, 5).map((warning: string, index: number) => (
@@ -142,21 +143,23 @@ export default function ContractsPreview({ preview, fileType, processing, import
             </div>
           )}
           
-          {/* Column Analysis (if available) */}
+          {/* Column Analysis */}
           {analysis.length > 0 && (
             <div className="bg-muted p-3 rounded-md">
-              <h4 className="text-sm font-medium mb-2">Análise de Colunas</h4>
+              <h4 className="text-sm font-medium mb-2">Mapeamento de Colunas</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 text-xs">
                 {analysis.slice(0, 9).map((col: any, index: number) => (
-                  <div key={index} className="flex justify-between">
-                    <span className="truncate">{col.header}</span>
-                    <span className={`ml-2 ${col.field ? 'text-green-600' : 'text-gray-400'}`}>
+                  <div key={index} className="flex justify-between items-center">
+                    <span className="truncate font-medium">{col.header}</span>
+                    <span className={`ml-2 px-2 py-1 rounded text-xs ${
+                      col.field ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                    }`}>
                       {col.field || 'não mapeado'}
                     </span>
                   </div>
                 ))}
                 {analysis.length > 9 && (
-                  <div className="text-muted-foreground">
+                  <div className="text-muted-foreground text-center col-span-full">
                     ... e mais {analysis.length - 9} colunas
                   </div>
                 )}
@@ -193,7 +196,7 @@ export default function ContractsPreview({ preview, fileType, processing, import
                 ) : (
                   <>
                     <Download className="h-4 w-4 mr-2" />
-                    Importar Selecionados
+                    Importar {selectedContracts.length} Contrato(s)
                   </>
                 )}
               </Button>
@@ -209,7 +212,7 @@ export default function ContractsPreview({ preview, fileType, processing, import
               </div>
               <Progress value={(progress.processed / progress.total) * 100} />
               {progress.errors.length > 0 && (
-                <div className="text-sm text-red-600">
+                <div className="text-sm text-red-600 max-h-20 overflow-y-auto">
                   {progress.errors.slice(0, 3).map((error, index) => (
                     <div key={index}>{error}</div>
                   ))}
@@ -219,9 +222,9 @@ export default function ContractsPreview({ preview, fileType, processing, import
           )}
 
           {/* Contracts Table */}
-          <div className="border rounded-md">
+          <div className="border rounded-md max-h-96 overflow-y-auto">
             <Table>
-              <TableHeader>
+              <TableHeader className="sticky top-0 bg-background">
                 <TableRow>
                   <TableHead className="w-12">
                     <Checkbox
@@ -240,7 +243,7 @@ export default function ContractsPreview({ preview, fileType, processing, import
               </TableHeader>
               <TableBody>
                 {contracts.map((contract, index) => (
-                  <TableRow key={index}>
+                  <TableRow key={index} className="hover:bg-muted/50">
                     <TableCell>
                       <Checkbox
                         checked={selectedContracts.includes(index.toString())}
@@ -261,16 +264,22 @@ export default function ContractsPreview({ preview, fileType, processing, import
                       </div>
                     </TableCell>
                     <TableCell>
-                      {contract.valor ? `R$ ${contract.valor.toLocaleString('pt-BR')}` : '-'}
-                    </TableCell>
-                    <TableCell>
-                      {contract.dataInicio || (
-                        <span className="text-orange-600 text-xs">⚠️ Faltando</span>
+                      {contract.valor ? `R$ ${contract.valor.toLocaleString('pt-BR')}` : (
+                        <span className="text-orange-600 text-xs">Não informado</span>
                       )}
                     </TableCell>
                     <TableCell>
-                      {contract.dataTermino || (
-                        <span className="text-orange-600 text-xs">⚠️ Faltando</span>
+                      {contract.dataInicio ? (
+                        new Date(contract.dataInicio).toLocaleDateString('pt-BR')
+                      ) : (
+                        <span className="text-orange-600 text-xs">Faltando</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {contract.dataTermino ? (
+                        new Date(contract.dataTermino).toLocaleDateString('pt-BR')
+                      ) : (
+                        <span className="text-orange-600 text-xs">Faltando</span>
                       )}
                     </TableCell>
                     <TableCell>
