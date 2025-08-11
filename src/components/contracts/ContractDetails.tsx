@@ -54,11 +54,17 @@ export default function ContractDetails({ contract, onEdit, onBack }: ContractDe
         </TabsContent>
 
         <TabsContent value="aditivos" className="space-y-4">
-          <ContractAddendums contract={contract} />
+          <ContractAddendums 
+            contract={contract}
+            editable={true}
+          />
         </TabsContent>
 
         <TabsContent value="documentos" className="space-y-4">
-          <ContractDocuments contract={contract} />
+          <ContractDocuments 
+            contract={contract}
+            editable={true}
+          />
         </TabsContent>
       </Tabs>
     </div>

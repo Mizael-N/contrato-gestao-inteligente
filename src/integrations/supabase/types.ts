@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      addendum_documents: {
+        Row: {
+          addendum_id: string
+          created_at: string
+          data_upload: string
+          file_path: string
+          file_size: number | null
+          file_type: string | null
+          id: string
+          nome: string
+        }
+        Insert: {
+          addendum_id: string
+          created_at?: string
+          data_upload?: string
+          file_path: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          nome: string
+        }
+        Update: {
+          addendum_id?: string
+          created_at?: string
+          data_upload?: string
+          file_path?: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          nome?: string
+        }
+        Relationships: []
+      }
       addendums: {
         Row: {
           contract_id: string
@@ -138,6 +171,9 @@ export type Database = {
           contract_id: string
           created_at: string
           data_upload: string
+          file_path: string | null
+          file_size: number | null
+          file_type: string | null
           id: string
           nome: string
           tipo: string
@@ -147,6 +183,9 @@ export type Database = {
           contract_id: string
           created_at?: string
           data_upload?: string
+          file_path?: string | null
+          file_size?: number | null
+          file_type?: string | null
           id?: string
           nome: string
           tipo: string
@@ -156,6 +195,9 @@ export type Database = {
           contract_id?: string
           created_at?: string
           data_upload?: string
+          file_path?: string | null
+          file_size?: number | null
+          file_type?: string | null
           id?: string
           nome?: string
           tipo?: string
