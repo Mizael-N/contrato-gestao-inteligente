@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,10 +34,15 @@ export default function ContractsPreview({ preview, fileType, processing, import
   const [selectedContracts, setSelectedContracts] = useState<string[]>([]);
   const { importing: importingContracts, progress, importContracts } = useContractImport();
 
+  // Type guard to check if preview is enhanced format
+  const isEnhancedPreview = (preview: any): preview is { contracts: Partial<Contract>[]; analysis: any[]; validation: any } => {
+    return preview && typeof preview === 'object' && Array.isArray(preview.contracts);
+  };
+
   // Handle preview data structure (enhanced vs legacy)
-  const contracts = preview?.contracts || preview || [];
-  const analysis = preview?.analysis || [];
-  const validation = preview?.validation || null;
+  const contracts = isEnhancedPreview(preview) ? preview.contracts : (Array.isArray(preview) ? preview : []);
+  const analysis = isEnhancedPreview(preview) ? preview.analysis : [];
+  const validation = isEnhancedPreview(preview) ? preview.validation : null;
 
   useEffect(() => {
     if (contracts.length > 0) {
@@ -101,13 +107,13 @@ export default function ContractsPreview({ preview, fileType, processing, import
           {/* Enhanced Analysis Summary */}
           {validation && (
             <div className="space-y-2">
-              {validation.warnings.length > 0 && (
+              {validation.warnings && validation.warnings.length > 0 && (
                 <Alert>
                   <AlertTriangle className="h-4 w-4" />
                   <AlertTitle>Avisos de Análise</AlertTitle>
                   <AlertDescription>
                     <ul className="list-disc list-inside space-y-1">
-                      {validation.warnings.slice(0, 5).map((warning, index) => (
+                      {validation.warnings.slice(0, 5).map((warning: string, index: number) => (
                         <li key={index} className="text-sm">{warning}</li>
                       ))}
                       {validation.warnings.length > 5 && (
@@ -120,13 +126,13 @@ export default function ContractsPreview({ preview, fileType, processing, import
                 </Alert>
               )}
               
-              {validation.suggestions.length > 0 && (
+              {validation.suggestions && validation.suggestions.length > 0 && (
                 <Alert>
                   <Info className="h-4 w-4" />
                   <AlertTitle>Sugestões</AlertTitle>
                   <AlertDescription>
                     <ul className="list-disc list-inside space-y-1">
-                      {validation.suggestions.slice(0, 3).map((suggestion, index) => (
+                      {validation.suggestions.slice(0, 3).map((suggestion: string, index: number) => (
                         <li key={index} className="text-sm">{suggestion}</li>
                       ))}
                     </ul>
@@ -141,7 +147,7 @@ export default function ContractsPreview({ preview, fileType, processing, import
             <div className="bg-muted p-3 rounded-md">
               <h4 className="text-sm font-medium mb-2">Análise de Colunas</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 text-xs">
-                {analysis.slice(0, 9).map((col, index) => (
+                {analysis.slice(0, 9).map((col: any, index: number) => (
                   <div key={index} className="flex justify-between">
                     <span className="truncate">{col.header}</span>
                     <span className={`ml-2 ${col.field ? 'text-green-600' : 'text-gray-400'}`}>
