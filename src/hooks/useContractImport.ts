@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Contract } from '@/types/contract';
 import { useContracts } from './useContracts';
+import { useContractDuplicateCheck } from './useContractDuplicateCheck';
 import { useToast } from '@/hooks/use-toast';
 
 interface ImportProgress {
@@ -15,6 +16,7 @@ export function useContractImport() {
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState<ImportProgress | null>(null);
   const { createContract } = useContracts();
+  const { checkForDuplicates } = useContractDuplicateCheck();
   const { toast } = useToast();
 
   const importContracts = async (contracts: Partial<Contract>[]) => {
@@ -39,7 +41,25 @@ export function useContractImport() {
     const errors: string[] = [];
     const warnings: string[] = [];
 
-    console.log('📦 Iniciando importação inteligente de', contracts.length, 'contratos');
+    console.log('📦 Iniciando importação RIGOROSA de', contracts.length, 'contratos');
+    
+    // Verificar duplicatas ANTES de importar
+    console.log('🔍 Verificando duplicatas no banco de dados...');
+    const duplicates = await checkForDuplicates(contracts);
+    
+    if (duplicates.length > 0) {
+      console.log('⚠️ Duplicatas encontradas:', duplicates.length);
+      toast({
+        title: "Contratos duplicados encontrados",
+        description: `${duplicates.length} contrato(s) já existe(m) no banco. Verifique os números: ${duplicates.map(d => d.contract.numero).join(', ')}`,
+        variant: "destructive"
+      });
+      setImporting(false);
+      setProgress(null);
+      return false;
+    }
+    
+    console.log('✅ Nenhuma duplicata encontrada, prosseguindo...');
 
     try {
       for (let i = 0; i < contracts.length; i++) {
@@ -55,12 +75,25 @@ export function useContractImport() {
         console.log(`📝 Importando contrato ${i + 1}/${contracts.length}: ${currentName}`);
 
         try {
-          // Validar dados críticos antes da importação
+          // Validar dados críticos RIGOROSAMENTE antes da importação
           const validationIssues: string[] = [];
+          const criticalIssues: string[] = [];
+          
+          if (!contract.numero?.trim()) criticalIssues.push('número do contrato');
+          if (!contract.objeto?.trim()) criticalIssues.push('objeto do contrato');
+          if (!contract.contratada?.trim()) criticalIssues.push('empresa contratada');
           
           if (!contract.dataInicio) validationIssues.push('data de início');
           if (!contract.dataTermino) validationIssues.push('data de término');
+          if (!contract.valor || contract.valor === 0) validationIssues.push('valor');
           if (!contract.prazoExecucao || contract.prazoExecucao === 0) validationIssues.push('prazo de execução');
+          
+          // Não importar se faltar dados críticos
+          if (criticalIssues.length > 0) {
+            errors.push(`${currentName}: Dados críticos faltando - ${criticalIssues.join(', ')}`);
+            console.log(`❌ Contrato ${currentName} rejeitado:`, criticalIssues);
+            continue;
+          }
           
           if (validationIssues.length > 0) {
             warnings.push(`${currentName}: Campos precisam ser revisados - ${validationIssues.join(', ')}`);

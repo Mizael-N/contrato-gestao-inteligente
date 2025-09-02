@@ -128,14 +128,19 @@ function getAssumeFormat(detectedFormat?: string): 'DD/MM/YYYY' | 'MM/DD/YYYY' |
   }
 }
 
-// Gerar chave única MAIS rigorosa para prevenir duplicatas
+// Gerar chave única RIGOROSA para prevenir duplicatas
 function generateContractKey(contract: Partial<Contract>): string {
   const numero = (contract.numero || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-  const objeto = (contract.objeto || '').substring(0, 30).trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-  const contratada = (contract.contratada || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  const objeto = (contract.objeto || '').substring(0, 50).trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  const contratada = (contract.contratada || '').substring(0, 30).trim().toLowerCase().replace(/[^a-z0-9]/g, '');
   const valor = contract.valor || 0;
+  const dataInicio = (contract.dataInicio || '').replace(/-/g, '');
   
-  return `${numero}_${objeto}_${contratada}_${valor}`;
+  // Incluir mais campos para maior unicidade
+  const key = `${numero}|${objeto}|${contratada}|${valor}|${dataInicio}`;
+  
+  console.log(`🔑 Chave gerada: ${key.substring(0, 60)}...`);
+  return key;
 }
 
 // Validar se linha tem dados suficientes para ser um contrato
@@ -229,46 +234,64 @@ export function extractContractFromSpreadsheetDataIntelligent(
       const status = parseStatus(extractFieldValue(row, fieldMappings.status));
       const valor = parseValue(extractFieldValue(row, fieldMappings.valor));
       
-      // Parsing RIGOROSO de datas - não completar automaticamente
+      // Parsing RIGOROSO de datas - SÓ tentar se coluna foi identificada com ALTA confiança
       let dataInicio: Date | null = null;
       let dataTermino: Date | null = null;
       
-      if (fieldMappings.dataInicio) {
+      // Data de início - SÓ tentar se mapeamento tem alta confiança
+      if (fieldMappings.dataInicio && fieldMappings.dataInicio.confidence > 0.8) {
         dateParseAttempts++;
         const startValue = row[fieldMappings.dataInicio.index];
-        const parseOptions = {
-          assume: getAssumeFormat(fieldMappings.dataInicio.dateStrategy?.format),
-          isEndColumn: false,
-          date1904: options.date1904 || false,
-          columnStrategy: fieldMappings.dataInicio.dateStrategy
-        };
         
-        dataInicio = parseEnhancedDate(startValue, parseOptions);
-        if (dataInicio) {
-          successfulDates++;
-          console.log(`✅ Data início extraída: ${toYMD(dataInicio)}`);
+        // NÃO tentar parsear se valor estiver vazio ou for obviamente inválido
+        if (startValue !== null && startValue !== undefined && String(startValue).trim() !== '') {
+          const parseOptions = {
+            assume: getAssumeFormat(fieldMappings.dataInicio.dateStrategy?.format),
+            isEndColumn: false,
+            date1904: options.date1904 || false,
+            columnStrategy: fieldMappings.dataInicio.dateStrategy
+          };
+          
+          dataInicio = parseEnhancedDate(startValue, parseOptions);
+          if (dataInicio) {
+            successfulDates++;
+            console.log(`✅ Data início extraída: ${toYMD(dataInicio)} (valor original: "${startValue}")`);
+          } else {
+            console.log(`❌ Falha RIGOROSA ao analisar data início: "${startValue}" (não será preenchida)`);
+          }
         } else {
-          console.log(`⚠️ Falha ao analisar data início: "${startValue}"`);
+          console.log(`⚠️ Valor vazio/inválido para data início: "${startValue}"`);
         }
+      } else if (fieldMappings.dataInicio) {
+        console.log(`⚠️ Coluna data início tem confiança baixa (${fieldMappings.dataInicio.confidence}) - ignorando`);
       }
       
-      if (fieldMappings.dataTermino) {
+      // Data de término - SÓ tentar se mapeamento tem alta confiança
+      if (fieldMappings.dataTermino && fieldMappings.dataTermino.confidence > 0.8) {
         dateParseAttempts++;
         const endValue = row[fieldMappings.dataTermino.index];
-        const parseOptions = {
-          assume: getAssumeFormat(fieldMappings.dataTermino.dateStrategy?.format),
-          isEndColumn: true,
-          date1904: options.date1904 || false,
-          columnStrategy: fieldMappings.dataTermino.dateStrategy
-        };
         
-        dataTermino = parseEnhancedDate(endValue, parseOptions);
-        if (dataTermino) {
-          successfulDates++;
-          console.log(`✅ Data término extraída: ${toYMD(dataTermino)}`);
+        // NÃO tentar parsear se valor estiver vazio ou for obviamente inválido
+        if (endValue !== null && endValue !== undefined && String(endValue).trim() !== '') {
+          const parseOptions = {
+            assume: getAssumeFormat(fieldMappings.dataTermino.dateStrategy?.format),
+            isEndColumn: true,
+            date1904: options.date1904 || false,
+            columnStrategy: fieldMappings.dataTermino.dateStrategy
+          };
+          
+          dataTermino = parseEnhancedDate(endValue, parseOptions);
+          if (dataTermino) {
+            successfulDates++;
+            console.log(`✅ Data término extraída: ${toYMD(dataTermino)} (valor original: "${endValue}")`);
+          } else {
+            console.log(`❌ Falha RIGOROSA ao analisar data término: "${endValue}" (não será preenchida)`);
+          }
         } else {
-          console.log(`⚠️ Falha ao analisar data término: "${endValue}"`);
+          console.log(`⚠️ Valor vazio/inválido para data término: "${endValue}"`);
         }
+      } else if (fieldMappings.dataTermino) {
+        console.log(`⚠️ Coluna data término tem confiança baixa (${fieldMappings.dataTermino.confidence}) - ignorando`);
       }
       
       // Calcular prazo SÓ se ambas as datas existem
@@ -296,10 +319,10 @@ export function extractContractFromSpreadsheetDataIntelligent(
         modalidade,
         status,
         observacoes: `Importado da planilha "${sheetName}" linha ${i}. ` +
-                    `${!dataInicio ? 'Data de início não foi reconhecida automaticamente. ' : ''}` +
-                    `${!dataTermino ? 'Data de término não foi reconhecida automaticamente. ' : ''}` +
-                    `${valor === 0 ? 'Valor não foi reconhecido automaticamente. ' : ''}` +
-                    `Revise e complete os dados antes de finalizar.`,
+                    `${!dataInicio ? 'ATENÇÃO: Data de início não foi reconhecida - complete manualmente. ' : ''}` +
+                    `${!dataTermino ? 'ATENÇÃO: Data de término não foi reconhecida - complete manualmente. ' : ''}` +
+                    `${valor === 0 ? 'ATENÇÃO: Valor não foi reconhecido - complete manualmente. ' : ''}` +
+                    `Sistema de parsing rigoroso aplicado para evitar dados incorretos.`,
         aditivos: [],
         pagamentos: [],
         documentos: []

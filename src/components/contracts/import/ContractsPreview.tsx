@@ -140,14 +140,15 @@ export default function ContractsPreview({ preview, fileType, importing, onImpor
             </div>
           </div>
 
-          {/* Avisos importantes */}
+          {/* Avisos importantes - SISTEMA RIGOROSO */}
           {missingDates > 0 && (
             <Alert>
               <Calendar className="h-4 w-4" />
-              <AlertTitle>Datas não reconhecidas automaticamente</AlertTitle>
+              <AlertTitle>⚠️ Sistema Rigoroso: Datas não reconhecidas</AlertTitle>
               <AlertDescription>
-                {missingDates} contrato(s) não tiveram suas datas de início e/ou término reconhecidas. 
-                Você precisará inserir essas informações manualmente após a importação.
+                {missingDates} contrato(s) não tiveram suas datas reconhecidas automaticamente. 
+                <strong>O sistema usa parsing rigoroso para evitar datas incorretas.</strong> 
+                Complete essas informações manualmente após a importação.
               </AlertDescription>
             </Alert>
           )}
@@ -155,13 +156,24 @@ export default function ContractsPreview({ preview, fileType, importing, onImpor
           {missingValues > 0 && (
             <Alert>
               <DollarSign className="h-4 w-4" />
-              <AlertTitle>Valores não reconhecidos automaticamente</AlertTitle>
+              <AlertTitle>⚠️ Sistema Rigoroso: Valores não reconhecidos</AlertTitle>
               <AlertDescription>
                 {missingValues} contrato(s) não tiveram seus valores reconhecidos. 
-                Verifique se os valores estão em formato numérico ou de moeda na planilha.
+                <strong>O sistema só reconhece valores em formato claro de moeda.</strong> 
+                Verifique se os valores estão em formato numérico correto na planilha.
               </AlertDescription>
             </Alert>
           )}
+          
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertTitle>🧠 Sistema de Importação Rigoroso Ativado</AlertTitle>
+            <AlertDescription>
+              Este sistema usa parsing rigoroso para prevenir dados incorretos. 
+              Datas e valores só são reconhecidos quando o sistema tem alta confiança na detecção. 
+              <strong>Verificação de duplicatas será feita antes da importação.</strong>
+            </AlertDescription>
+          </Alert>
           
           {/* Avisos da validação */}
           {validation && validation.warnings && validation.warnings.length > 0 && (
