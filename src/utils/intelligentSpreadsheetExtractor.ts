@@ -128,34 +128,41 @@ function getAssumeFormat(detectedFormat?: string): 'DD/MM/YYYY' | 'MM/DD/YYYY' |
   }
 }
 
-// Gerar chave única RIGOROSA para prevenir duplicatas
+// Gerar chave única MAIS RIGOROSA para prevenir duplicatas
 function generateContractKey(contract: Partial<Contract>): string {
   const numero = (contract.numero || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-  const objeto = (contract.objeto || '').substring(0, 50).trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-  const contratada = (contract.contratada || '').substring(0, 30).trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-  const valor = contract.valor || 0;
+  const objeto = (contract.objeto || '').substring(0, 100).trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  const contratada = (contract.contratada || '').substring(0, 50).trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  const contratante = (contract.contratante || '').substring(0, 30).trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  const valor = Math.round((contract.valor || 0) * 100); // Incluir centavos para maior precisão
   const dataInicio = (contract.dataInicio || '').replace(/-/g, '');
+  const dataTermino = (contract.dataTermino || '').replace(/-/g, '');
   
-  // Incluir mais campos para maior unicidade
-  const key = `${numero}|${objeto}|${contratada}|${valor}|${dataInicio}`;
+  // Chave mais robusta com mais campos
+  const key = `${numero}|${objeto}|${contratada}|${contratante}|${valor}|${dataInicio}|${dataTermino}`;
   
-  console.log(`🔑 Chave gerada: ${key.substring(0, 60)}...`);
+  console.log(`🔑 Chave gerada: ${key.substring(0, 80)}...`);
   return key;
 }
 
-// Validar se linha tem dados suficientes para ser um contrato
+// Validar se linha tem dados suficientes para ser um contrato - MENOS RESTRITIVO
 function isValidContractRow(row: any[], fieldMappings: Record<string, ColumnAnalysis | null>): boolean {
-  // Verificar se tem pelo menos número OU objeto OU contratada
+  // Verificar se não é linha totalmente vazia primeiro
+  const hasAnyData = row.some(cell => cell && String(cell).trim() !== '');
+  if (!hasAnyData) return false;
+  
+  // Verificar se tem pelo menos algum campo identificável ou dados em posições esperadas
   const hasNumero = fieldMappings.numero && extractFieldValue(row, fieldMappings.numero);
   const hasObjeto = fieldMappings.objeto && extractFieldValue(row, fieldMappings.objeto);
   const hasContratada = fieldMappings.contratada && extractFieldValue(row, fieldMappings.contratada);
+  const hasContratante = fieldMappings.contratante && extractFieldValue(row, fieldMappings.contratante);
+  const hasValor = fieldMappings.valor && extractFieldValue(row, fieldMappings.valor);
   
-  const hasMinimumData = hasNumero || hasObjeto || hasContratada;
+  // Mais flexível: aceitar se tem pelo menos 1 campo identificado OU dados nas primeiras colunas
+  const hasIdentifiedField = hasNumero || hasObjeto || hasContratada || hasContratante || hasValor;
+  const hasDataInFirstColumns = row.slice(0, 5).some(cell => cell && String(cell).trim() !== '');
   
-  // Verificar se não é linha totalmente vazia
-  const hasAnyData = row.some(cell => cell && String(cell).trim() !== '');
-  
-  return hasMinimumData && hasAnyData;
+  return hasIdentifiedField || hasDataInFirstColumns;
 }
 
 export function extractContractFromSpreadsheetDataIntelligent(
@@ -192,11 +199,11 @@ export function extractContractFromSpreadsheetDataIntelligent(
     datas: columnAnalyses.filter(a => a.dataType === 'date').length
   });
   
-  // Passo 2: Mapeamentos de campos (SÓ aceitar alta confiança)
+  // Passo 2: Mapeamentos de campos (aceitar confiança moderada para melhor reconhecimento)
   const fieldMappings: Record<string, ColumnAnalysis | null> = {};
   
   for (const analysis of columnAnalyses) {
-    if (analysis.field && analysis.confidence > 0.7) { // Aumentei de 0.5 para 0.7
+    if (analysis.field && analysis.confidence > 0.5) { // Voltou para 0.5 para melhor reconhecimento
       if (!fieldMappings[analysis.field] || fieldMappings[analysis.field]!.confidence < analysis.confidence) {
         fieldMappings[analysis.field] = analysis;
       }
@@ -225,11 +232,11 @@ export function extractContractFromSpreadsheetDataIntelligent(
     contractsProcessed++;
     
     try {
-      // Extrair dados básicos
-      const numero = extractFieldValue(row, fieldMappings.numero) || `${sheetName}-${i}`;
-      const objeto = extractFieldValue(row, fieldMappings.objeto) || 'Objeto não especificado';
-      const contratante = extractFieldValue(row, fieldMappings.contratante) || 'Órgão Público';
-      const contratada = extractFieldValue(row, fieldMappings.contratada) || 'Empresa não especificada';
+      // Extrair dados básicos - SEM AUTOFILL, retornar null se não conseguir extrair
+      const numero = extractFieldValue(row, fieldMappings.numero);
+      const objeto = extractFieldValue(row, fieldMappings.objeto);
+      const contratante = extractFieldValue(row, fieldMappings.contratante);
+      const contratada = extractFieldValue(row, fieldMappings.contratada);
       const modalidade = parseModalidade(extractFieldValue(row, fieldMappings.modalidade));
       const status = parseStatus(extractFieldValue(row, fieldMappings.status));
       const valor = parseValue(extractFieldValue(row, fieldMappings.valor));
@@ -238,8 +245,8 @@ export function extractContractFromSpreadsheetDataIntelligent(
       let dataInicio: Date | null = null;
       let dataTermino: Date | null = null;
       
-      // Data de início - SÓ tentar se mapeamento tem alta confiança
-      if (fieldMappings.dataInicio && fieldMappings.dataInicio.confidence > 0.8) {
+      // Data de início - tentar se mapeamento tem confiança razoável
+      if (fieldMappings.dataInicio && fieldMappings.dataInicio.confidence > 0.6) {
         dateParseAttempts++;
         const startValue = row[fieldMappings.dataInicio.index];
         
@@ -266,8 +273,8 @@ export function extractContractFromSpreadsheetDataIntelligent(
         console.log(`⚠️ Coluna data início tem confiança baixa (${fieldMappings.dataInicio.confidence}) - ignorando`);
       }
       
-      // Data de término - SÓ tentar se mapeamento tem alta confiança
-      if (fieldMappings.dataTermino && fieldMappings.dataTermino.confidence > 0.8) {
+      // Data de término - tentar se mapeamento tem confiança razoável
+      if (fieldMappings.dataTermino && fieldMappings.dataTermino.confidence > 0.6) {
         dateParseAttempts++;
         const endValue = row[fieldMappings.dataTermino.index];
         
@@ -305,24 +312,31 @@ export function extractContractFromSpreadsheetDataIntelligent(
       }
       // NÃO definir prazo padrão - deixar 0 se não conseguir calcular
       
-      // Criar contrato
+      // Pular linha se não tiver dados essenciais
+      if (!numero && !objeto && !contratada) {
+        console.log(`⏭️ Pulando linha ${i}: sem dados essenciais mínimos`);
+        continue;
+      }
+
+      // Criar contrato - SEM autofill, manter campos vazios se não reconhecidos
       const contract: Partial<Contract> = {
-        numero: String(numero).trim(),
-        objeto: String(objeto).trim(),
-        contratante: String(contratante).trim(),
-        contratada: String(contratada).trim(),
+        numero: numero ? String(numero).trim() : `LINHA-${i}`, // Só fallback para número
+        objeto: objeto ? String(objeto).trim() : '',
+        contratante: contratante ? String(contratante).trim() : '',
+        contratada: contratada ? String(contratada).trim() : '',
         valor,
-        dataInicio: dataInicio ? toYMD(dataInicio) : '', // Vazio se não conseguir extrair
-        dataTermino: dataTermino ? toYMD(dataTermino) : '', // Vazio se não conseguir extrair
+        dataInicio: dataInicio ? toYMD(dataInicio) : '',
+        dataTermino: dataTermino ? toYMD(dataTermino) : '',
         prazoExecucao,
         prazoUnidade,
         modalidade,
         status,
         observacoes: `Importado da planilha "${sheetName}" linha ${i}. ` +
-                    `${!dataInicio ? 'ATENÇÃO: Data de início não foi reconhecida - complete manualmente. ' : ''}` +
-                    `${!dataTermino ? 'ATENÇÃO: Data de término não foi reconhecida - complete manualmente. ' : ''}` +
-                    `${valor === 0 ? 'ATENÇÃO: Valor não foi reconhecido - complete manualmente. ' : ''}` +
-                    `Sistema de parsing rigoroso aplicado para evitar dados incorretos.`,
+                    `${!dataInicio ? 'ATENÇÃO: Data de início não reconhecida. ' : ''}` +
+                    `${!dataTermino ? 'ATENÇÃO: Data de término não reconhecida. ' : ''}` +
+                    `${valor === 0 ? 'ATENÇÃO: Valor não reconhecido. ' : ''}` +
+                    `${!objeto ? 'ATENÇÃO: Objeto não reconhecido. ' : ''}` +
+                    `${!contratada ? 'ATENÇÃO: Contratada não reconhecida. ' : ''}`,
         aditivos: [],
         pagamentos: [],
         documentos: []

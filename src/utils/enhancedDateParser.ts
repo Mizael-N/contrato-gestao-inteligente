@@ -27,7 +27,7 @@ export function parseEnhancedDate(value: any, options: DateParseOptions = {}): D
   
   // Números seriais do Excel - SÓ se for realmente uma coluna de data identificada
   if (typeof value === 'number' && columnStrategy && 
-      columnStrategy.confidence > 0.8 && 
+      columnStrategy.confidence > 0.6 && 
       value > 25569 && value < 73050) { // Entre 1970 e 2100 aprox.
     console.log(`🔍 Tentativa de parsing serial Excel: ${value} (coluna com confiança ${columnStrategy.confidence})`);
     return parseExcelSerial(value, date1904);

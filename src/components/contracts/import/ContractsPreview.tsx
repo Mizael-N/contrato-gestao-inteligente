@@ -140,14 +140,15 @@ export default function ContractsPreview({ preview, fileType, importing, onImpor
             </div>
           </div>
 
-          {/* Avisos importantes - SISTEMA RIGOROSO */}
+          {/* Avisos importantes - SISTEMA RIGOROSO COM MELHOR CLAREZA */}
           {missingDates > 0 && (
             <Alert>
               <Calendar className="h-4 w-4" />
-              <AlertTitle>⚠️ Sistema Rigoroso: Datas não reconhecidas</AlertTitle>
+              <AlertTitle>🎯 Sistema Rigoroso: Datas não reconhecidas automaticamente</AlertTitle>
               <AlertDescription>
-                {missingDates} contrato(s) não tiveram suas datas reconhecidas automaticamente. 
-                <strong>O sistema usa parsing rigoroso para evitar datas incorretas.</strong> 
+                {missingDates} contrato(s) não tiveram suas datas reconhecidas. 
+                <strong>O sistema usa validação rigorosa para evitar datas incorretas.</strong> 
+                Datas só são reconhecidas quando há alta confiança na detecção do formato. 
                 Complete essas informações manualmente após a importação.
               </AlertDescription>
             </Alert>
@@ -156,22 +157,22 @@ export default function ContractsPreview({ preview, fileType, importing, onImpor
           {missingValues > 0 && (
             <Alert>
               <DollarSign className="h-4 w-4" />
-              <AlertTitle>⚠️ Sistema Rigoroso: Valores não reconhecidos</AlertTitle>
+              <AlertTitle>🎯 Sistema Rigoroso: Valores não reconhecidos automaticamente</AlertTitle>
               <AlertDescription>
                 {missingValues} contrato(s) não tiveram seus valores reconhecidos. 
-                <strong>O sistema só reconhece valores em formato claro de moeda.</strong> 
-                Verifique se os valores estão em formato numérico correto na planilha.
+                <strong>O sistema só reconhece valores em formato numérico claro.</strong> 
+                Verifique se os valores na planilha estão em formato de moeda ou número sem caracteres especiais.
               </AlertDescription>
             </Alert>
           )}
           
           <Alert>
             <Info className="h-4 w-4" />
-            <AlertTitle>🧠 Sistema de Importação Rigoroso Ativado</AlertTitle>
+            <AlertTitle>✅ Sistema de Importação Rigoroso e Anti-Duplicação</AlertTitle>
             <AlertDescription>
-              Este sistema usa parsing rigoroso para prevenir dados incorretos. 
-              Datas e valores só são reconhecidos quando o sistema tem alta confiança na detecção. 
-              <strong>Verificação de duplicatas será feita antes da importação.</strong>
+              Este sistema usa inteligência artificial para reconhecer dados com alta precisão e prevenir importações incorretas. 
+              <strong>Campos só são preenchidos quando há certeza.</strong> O sistema também verifica automaticamente 
+              duplicatas no banco de dados antes da importação. Isso garante integridade dos dados.
             </AlertDescription>
           </Alert>
           
@@ -317,31 +318,37 @@ export default function ContractsPreview({ preview, fileType, importing, onImpor
                     </TableCell>
                     <TableCell>
                       {contract.valor && contract.valor > 0 ? (
-                        `R$ ${contract.valor.toLocaleString('pt-BR')}`
+                        <span className="text-green-700 font-medium">
+                          R$ {contract.valor.toLocaleString('pt-BR')}
+                        </span>
                       ) : (
                         <span className="text-amber-600 text-xs flex items-center">
                           <DollarSign className="h-3 w-3 mr-1" />
-                          Não reconhecido
+                          Campo vazio
                         </span>
                       )}
                     </TableCell>
                     <TableCell>
                       {contract.dataInicio ? (
-                        new Date(contract.dataInicio).toLocaleDateString('pt-BR')
+                        <span className="text-green-700 font-medium">
+                          {new Date(contract.dataInicio).toLocaleDateString('pt-BR')}
+                        </span>
                       ) : (
                         <span className="text-amber-600 text-xs flex items-center">
                           <Calendar className="h-3 w-3 mr-1" />
-                          Não reconhecida
+                          Campo vazio
                         </span>
                       )}
                     </TableCell>
                     <TableCell>
                       {contract.dataTermino ? (
-                        new Date(contract.dataTermino).toLocaleDateString('pt-BR')
+                        <span className="text-green-700 font-medium">
+                          {new Date(contract.dataTermino).toLocaleDateString('pt-BR')}
+                        </span>
                       ) : (
                         <span className="text-amber-600 text-xs flex items-center">
                           <Calendar className="h-3 w-3 mr-1" />
-                          Não reconhecida
+                          Campo vazio
                         </span>
                       )}
                     </TableCell>

@@ -229,7 +229,7 @@ export function validateColumnMapping(analyses: ColumnAnalysis[]): {
   const requiredFields = ['numero', 'objeto', 'contratante', 'contratada'];
   const recommendedFields = ['dataInicio', 'dataTermino', 'valor'];
   
-  const mappedFields = new Set(analyses.filter(a => a.field && a.confidence > 0.7).map(a => a.field));
+  const mappedFields = new Set(analyses.filter(a => a.field && a.confidence > 0.5).map(a => a.field));
   
   // Verificar campos obrigatórios
   for (const field of requiredFields) {

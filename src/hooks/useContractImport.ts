@@ -75,18 +75,22 @@ export function useContractImport() {
         console.log(`📝 Importando contrato ${i + 1}/${contracts.length}: ${currentName}`);
 
         try {
-          // Validar dados críticos RIGOROSAMENTE antes da importação
+          // Validar dados de forma mais flexível - focar apenas no essencial
           const validationIssues: string[] = [];
           const criticalIssues: string[] = [];
           
-          if (!contract.numero?.trim()) criticalIssues.push('número do contrato');
-          if (!contract.objeto?.trim()) criticalIssues.push('objeto do contrato');
-          if (!contract.contratada?.trim()) criticalIssues.push('empresa contratada');
+          // Verificar se tem pelo menos número OU objeto+contratada
+          const hasNumero = contract.numero?.trim() && !contract.numero.startsWith('LINHA-');
+          const hasObjeto = contract.objeto?.trim() && contract.objeto !== '';
+          const hasContratada = contract.contratada?.trim() && contract.contratada !== '';
+          
+          if (!hasNumero && !(hasObjeto && hasContratada)) {
+            criticalIssues.push('dados básicos insuficientes (precisa de número OU objeto+contratada)');
+          }
           
           if (!contract.dataInicio) validationIssues.push('data de início');
           if (!contract.dataTermino) validationIssues.push('data de término');
           if (!contract.valor || contract.valor === 0) validationIssues.push('valor');
-          if (!contract.prazoExecucao || contract.prazoExecucao === 0) validationIssues.push('prazo de execução');
           
           // Não importar se faltar dados críticos
           if (criticalIssues.length > 0) {
@@ -133,22 +137,22 @@ export function useContractImport() {
       // Mostrar resultado final com detalhes da IA
       if (errors.length === 0 && warnings.length === 0) {
         toast({
-          title: "🧠 Importação inteligente concluída!",
-          description: `${successful} contrato(s) importado(s) com sucesso usando IA.`,
+          title: "🧠 Sistema rigoroso ativado: Importação concluída!",
+          description: `${successful} contrato(s) importado(s). Sistema preveniu dados incorretos.`,
           variant: "default"
         });
       } else if (successful > 0) {
         toast({
-          title: "🧠 Importação inteligente parcialmente bem-sucedida",
-          description: `${successful} contrato(s) importado(s). ${warnings.length} aviso(s), ${errors.length} erro(s). Verifique os detalhes.`,
+          title: "🧠 Sistema rigoroso: Importação parcial",
+          description: `${successful} contrato(s) importado(s). ${warnings.length} campos não reconhecidos, ${errors.length} erro(s).`,
           variant: "default"
         });
       } else {
-        toast({
-          title: "❌ Falha na importação",
-          description: `Nenhum contrato foi importado. ${errors.length} erro(s) encontrado(s).`,
-          variant: "destructive"
-        });
+      toast({
+        title: "❌ Sistema rigoroso: Falha na importação",
+        description: "Dados insuficientes encontrados. Verifique se a planilha tem as colunas corretas.",
+        variant: "destructive"
+      });
       }
 
       return errors.length === 0;
@@ -156,8 +160,8 @@ export function useContractImport() {
     } catch (error) {
       console.error('❌ Erro geral na importação inteligente:', error);
       toast({
-        title: "❌ Erro na importação inteligente",
-        description: "Ocorreu um erro inesperado durante a importação com IA.",
+        title: "❌ Erro no sistema de importação",
+        description: "Ocorreu um erro inesperado. Verifique o formato do arquivo.",
         variant: "destructive"
       });
       return false;

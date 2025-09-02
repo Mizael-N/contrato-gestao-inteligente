@@ -8,6 +8,7 @@ import FileInput from './import/FileInput';
 import ImportProgress from './import/ImportProgress';
 import ContractsPreview from './import/ContractsPreview';
 import { processSpreadsheet } from './import/SpreadsheetProcessor';
+import { useFileProcessingSession } from '@/hooks/useFileProcessingSession';
 
 interface ContractImportProps {
   onImport: (contracts: Partial<Contract>[]) => void;
@@ -17,12 +18,22 @@ interface ContractImportProps {
 export default function ContractImport({ onImport, onCancel }: ContractImportProps) {
   const [importing, setImporting] = useState(false);
   const [preview, setPreview] = useState<any>(null);
-  const [error, setError] = useState<string>('');
-  const [importProgress, setImportProgress] = useState<{ stage: string; progress: number; message: string } | null>(null);
+  const [error, setError] = useState('');
+  const [importProgress, setImportProgress] = useState<any>(null);
+  const { isProcessing, startSession, endSession } = useFileProcessingSession();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
+    
     if (selectedFile) {
+      // Verificar sessão antes de processar
+      const canProcess = startSession(selectedFile.name, selectedFile.size, selectedFile.lastModified);
+      
+      if (!canProcess) {
+        setError('Este arquivo já está sendo processado ou foi processado recentemente. Aguarde ou recarregue a página.');
+        return;
+      }
+      
       setError('');
       setPreview(null);
       setImportProgress(null);
@@ -31,9 +42,25 @@ export default function ContractImport({ onImport, onCancel }: ContractImportPro
       
       // Only accept spreadsheet files
       if (fileName.includes('.xlsx') || fileName.includes('.xls') || fileName.includes('.csv') || fileName.includes('.ods')) {
-        processSpreadsheet(selectedFile, setImporting, setPreview, setError, setImportProgress);
+        const sessionKey = `${selectedFile.name}_${selectedFile.size}_${selectedFile.lastModified}`;
+        
+        processSpreadsheet(
+          selectedFile, 
+          setImporting, 
+          (result) => {
+            setPreview(result);
+            endSession(true);
+          }, 
+          (errorMsg) => {
+            setError(errorMsg);
+            endSession(false);
+          }, 
+          setImportProgress,
+          sessionKey
+        );
       } else {
         setError('Formato de arquivo não suportado. Use apenas planilhas (Excel, CSV, ODS).');
+        endSession(false);
       }
     }
   };

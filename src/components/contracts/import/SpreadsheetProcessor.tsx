@@ -7,15 +7,19 @@ export const processSpreadsheet = async (
   setImporting: (importing: boolean) => void,
   setPreview: (preview: { contracts: Partial<Contract>[]; analysis: any; validation: any }) => void,
   setError: (error: string) => void,
-  setProgress?: (progress: { stage: string; progress: number; message: string }) => void
+  setProgress?: (progress: { stage: string; progress: number; message: string }) => void,
+  fileSessionKey?: string // Chave de sessão para evitar processamento duplicado
 ) => {
   setImporting(true);
   setError('');
   
-  console.log('🚀 ENHANCED COLUMN-BY-COLUMN SPREADSHEET PROCESSING:', {
+  const sessionKey = fileSessionKey || `${file.name}_${file.size}_${file.lastModified}`;
+  
+  console.log('🚀 SISTEMA RIGOROSO: Processamento único de planilha:', {
     nome: file.name,
     tipo: file.type,
-    tamanho: `${(file.size / 1024).toFixed(2)} KB`
+    tamanho: `${(file.size / 1024).toFixed(2)} KB`,
+    sessao: sessionKey
   });
   
   try {
